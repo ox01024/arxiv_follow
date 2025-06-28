@@ -14,7 +14,7 @@ on:
   push:
     branches: [ main ]
     paths: 
-      - 'daily_papers.py'
+      - 'src/arxiv_follow/cli/daily.py'
       - '.github/workflows/daily_papers.yml'
 
 jobs:
@@ -41,14 +41,14 @@ jobs:
     
     - name: 🧪 环境测试
       run: |
-        uv run python test_ci.py
+        uv run python tests/test_ci.py
     
     - name: 🔍 运行每日研究者动态监控
       run: |
         echo "🕐 当前时间 (UTC): $(date)"
         echo "🕘 北京时间: $(TZ='Asia/Shanghai' date)"
         echo "=========================================="
-        uv run python daily_papers.py
+        uv run python -m arxiv_follow.cli.daily
       env:
         TZ: Asia/Shanghai  # 设置时区为中国时间
         DIDA_ACCESS_TOKEN: ${{ secrets.DIDA_ACCESS_TOKEN }}

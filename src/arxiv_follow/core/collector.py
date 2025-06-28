@@ -366,7 +366,7 @@ class ArxivCollector:
                     content.has_code = True
                 
                 return content
-        else:
+            else:
                 logger.info(f"HTML version not available for {arxiv_id}")
                 return None
                 

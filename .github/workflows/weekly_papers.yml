@@ -12,7 +12,7 @@ on:
   push:
     branches: [ main ]
     paths: 
-      - 'weekly_papers.py'
+      - 'src/arxiv_follow/cli/weekly.py'
       - '.github/workflows/weekly_papers.yml'
 
 jobs:
@@ -39,7 +39,7 @@ jobs:
     
     - name: 🧪 环境测试
       run: |
-        uv run python test_ci.py
+        uv run python tests/test_ci.py
     
     - name: 📚 运行每周研究者动态汇总
       run: |
@@ -47,7 +47,7 @@ jobs:
         echo "🕘 北京时间: $(TZ='Asia/Shanghai' date)"
         echo "📅 本周研究者动态汇总生成"
         echo "=========================================="
-        uv run python weekly_papers.py
+        uv run python -m arxiv_follow.cli.weekly
       env:
         TZ: Asia/Shanghai  # 设置时区为中国时间
         DIDA_ACCESS_TOKEN: ${{ secrets.DIDA_ACCESS_TOKEN }}

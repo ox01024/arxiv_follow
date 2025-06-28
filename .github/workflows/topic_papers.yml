@@ -26,7 +26,7 @@ on:
   push:
     branches: [ main ]
     paths: 
-      - 'topic_papers.py'
+      - 'src/arxiv_follow/cli/topic.py'
       - '.github/workflows/topic_papers.yml'
 
 jobs:
@@ -53,7 +53,7 @@ jobs:
     
     - name: 🧪 环境测试
       run: |
-        uv run python test_ci.py
+        uv run python tests/test_ci.py
     
     - name: 🎯 运行主题论文搜索
       run: |
@@ -67,7 +67,7 @@ jobs:
         TOPICS="${{ github.event.inputs.topics || 'cs.AI,cs.CR' }}"
         
         # 运行主题搜索
-        uv run python topic_papers.py "$TOPICS"
+        uv run python -m arxiv_follow.cli.topic "$TOPICS"
         
         # 检查是否是周一，如果是则生成周报总结
         if [ "$(date +%u)" = "1" ]; then
