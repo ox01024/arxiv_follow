@@ -1,4 +1,4 @@
-name: 📚 周报论文监控
+name: 📚 每周研究者动态汇总
 
 on:
   # 每周一中国时间 09:00 执行 (对应UTC周一 01:00)
@@ -41,16 +41,17 @@ jobs:
       run: |
         uv run python test_ci.py
     
-    - name: 📚 运行周报论文监控
+    - name: 📚 运行每周研究者动态汇总
       run: |
         echo "🕐 当前时间 (UTC): $(date)"
         echo "🕘 北京时间: $(TZ='Asia/Shanghai' date)"
-        echo "📅 本周周报生成"
+        echo "📅 本周研究者动态汇总生成"
         echo "=========================================="
         uv run python weekly_papers.py
       env:
         TZ: Asia/Shanghai  # 设置时区为中国时间
         DIDA_ACCESS_TOKEN: ${{ secrets.DIDA_ACCESS_TOKEN }}
+        OPEN_ROUTE_API_KEY: ${{ secrets.OPEN_ROUTE_API_KEY }}
     
     - name: 📊 保存运行日志
       if: always()

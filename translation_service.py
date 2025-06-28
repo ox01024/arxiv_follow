@@ -81,7 +81,7 @@ class TranslationService:
 任务内容：
 {content}
 
-请按以下JSON格式返回翻译结果：
+请直接返回纯JSON格式的翻译结果，不要包含代码块标记或任何其他文本：
 {{
     "translated_title": "翻译后的标题",
     "translated_content": "翻译后的内容"
@@ -92,7 +92,10 @@ class TranslationService:
 2. 保持时间格式不变  
 3. 保持技术术语（如ArXiv、paper、citation等）的准确性
 4. 保持列表和段落格式
-5. 论文标题可以保持英文原文或提供中文翻译，以可读性为准"""
+5. 论文标题可以保持英文原文或提供中文翻译，以可读性为准
+6. 输出必须是有效的JSON格式，不要使用```json代码块包围
+7. JSON字符串中的换行符请用\\n表示
+8. 保持原始内容的完整性，不要省略任何信息"""
 
             # 构建API请求
             request_data = {
@@ -122,18 +125,33 @@ class TranslationService:
                     
                     # 尝试解析JSON结果
                     try:
-                        # 提取JSON部分（可能包含在代码块中）
-                        if "```json" in translated_text:
-                            json_start = translated_text.find("```json") + 7
-                            json_end = translated_text.find("```", json_start)
-                            json_text = translated_text[json_start:json_end].strip()
-                        elif "{" in translated_text and "}" in translated_text:
-                            json_start = translated_text.find("{")
-                            json_end = translated_text.rfind("}") + 1
-                            json_text = translated_text[json_start:json_end]
-                        else:
-                            json_text = translated_text
+                        # 清理和提取JSON部分
+                        cleaned_text = translated_text.strip()
                         
+                        # 移除可能的代码块标记
+                        if "```json" in cleaned_text:
+                            json_start = cleaned_text.find("```json") + 7
+                            json_end = cleaned_text.find("```", json_start)
+                            if json_end == -1:
+                                json_end = len(cleaned_text)
+                            json_text = cleaned_text[json_start:json_end].strip()
+                        elif cleaned_text.startswith("```") and cleaned_text.endswith("```"):
+                            # 处理只有```包围的情况
+                            json_text = cleaned_text[3:-3].strip()
+                        elif "{" in cleaned_text and "}" in cleaned_text:
+                            # 提取JSON对象
+                            json_start = cleaned_text.find("{")
+                            json_end = cleaned_text.rfind("}") + 1
+                            json_text = cleaned_text[json_start:json_end]
+                        else:
+                            json_text = cleaned_text
+                        
+                        # 再次清理可能的前后缀
+                        json_text = json_text.strip()
+                        if json_text.startswith("json"):
+                            json_text = json_text[4:].strip()
+                        
+                        logger.debug(f"准备解析的JSON文本: {json_text[:200]}...")
                         translation_result = json.loads(json_text)
                         
                         # 验证结果格式
@@ -157,10 +175,55 @@ class TranslationService:
                         
                     except (json.JSONDecodeError, ValueError) as e:
                         logger.warning(f"翻译结果JSON解析失败: {e}")
-                        # 降级处理：直接使用翻译文本
-                        lines = translated_text.split('\n')
-                        translated_title = lines[0] if lines else title
-                        translated_content = '\n'.join(lines[1:]) if len(lines) > 1 else translated_text
+                        logger.warning(f"原始响应内容: {translated_text[:500]}...")
+                        
+                        # 降级处理：清理可能存在的JSON格式标记
+                        cleaned_text = translated_text
+                        
+                        # 移除JSON代码块标记
+                        if "```json" in cleaned_text:
+                            cleaned_text = cleaned_text.replace("```json", "").replace("```", "")
+                        
+                        # 移除JSON格式字符串
+                        if '"translated_title":' in cleaned_text or '"translated_content":' in cleaned_text:
+                            # 尝试提取可能的标题和内容
+                            lines = [line.strip() for line in cleaned_text.split('\n') if line.strip()]
+                            
+                            # 过滤掉JSON格式行
+                            content_lines = []
+                            for line in lines:
+                                if not (line.startswith('{') or line.startswith('"') or 
+                                       line.startswith('}') or line.endswith(',') or
+                                       '"translated_' in line):
+                                    content_lines.append(line)
+                            
+                            if content_lines:
+                                translated_title = content_lines[0] if content_lines else title
+                                translated_content = '\n'.join(content_lines[1:]) if len(content_lines) > 1 else content_lines[0] if content_lines else content
+                            else:
+                                # 如果无法提取，则返回失败
+                                logger.error("无法从JSON解析失败的响应中提取有效内容")
+                                return {
+                                    "success": False,
+                                    "error": f"JSON解析失败且无法提取有效内容: {e}",
+                                    "translated_title": title,
+                                    "translated_content": content
+                                }
+                        else:
+                            # 普通文本处理
+                            lines = cleaned_text.split('\n')
+                            translated_title = lines[0] if lines else title
+                            translated_content = '\n'.join(lines[1:]) if len(lines) > 1 else cleaned_text
+                        
+                        # 最后验证结果不包含JSON格式
+                        if '"translated_title":' in translated_title or '"translated_content":' in translated_title:
+                            logger.error("降级处理后标题仍包含JSON格式，翻译失败")
+                            return {
+                                "success": False,
+                                "error": f"JSON解析失败且降级处理无效: {e}",
+                                "translated_title": title,
+                                "translated_content": content
+                            }
                         
                         return {
                             "success": True,

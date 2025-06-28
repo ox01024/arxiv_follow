@@ -102,7 +102,7 @@ PAPER_ANALYSIS_CONFIG = {
     "collection_config": {
         "try_html_version": True,      # 尝试获取HTML版本
         "include_sections": True,      # 包含章节信息
-        "max_content_length": 10000,   # 最大内容长度
+    
         "user_agent": "ArXiv-Follow-Collector/1.0"
     },
     

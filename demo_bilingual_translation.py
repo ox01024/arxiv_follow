@@ -26,7 +26,7 @@ def check_environment():
     
     for var_name, value in env_vars.items():
         if value:
-            masked_value = value[:8] + "..." if len(value) > 8 else value
+            masked_value = value[:8] + "..." if len(value) > 8 else value  # 测试展示截断
             print(f"✅ {var_name}: {masked_value}")
         else:
             print(f"❌ {var_name}: 未设置")
@@ -67,8 +67,8 @@ def demo_translation_service():
     translator = TranslationService()
     
     simple_result = translator.translate_task_content(
-        title="📄 论文监控日报",
-        content="今日发现了2篇高质量的机器学习论文，值得深入研究。",
+        title="📄 研究者动态日报",
+        content="今日研究者发布了2篇高质量的机器学习论文，值得深入研究。",
         source_lang="zh",
         target_lang="en"
     )
@@ -77,7 +77,7 @@ def demo_translation_service():
         print("✅ 简单翻译成功:")
         print(f"   原标题: 📄 论文监控日报")
         print(f"   译标题: {simple_result['translated_title']}")
-        print(f"   原内容: 今日发现了2篇高质量的机器学习论文，值得深入研究。")
+        print(f"   原内容: 今日研究者发布了2篇高质量的机器学习论文，值得深入研究。")
         print(f"   译内容: {simple_result['translated_content']}")
     else:
         print(f"❌ 简单翻译失败: {simple_result.get('error')}")
@@ -87,7 +87,7 @@ def demo_translation_service():
     print("\n🧪 3. 演示双语翻译功能...")
     
     demo_title = "📄 每日论文监控 - 2025-01-15"
-    demo_content = """🎉 今日发现 2 篇新论文！
+    demo_content = """🎉 今日研究者发布 2 篇新论文！
 
 📊 共发现 2 篇论文
 
@@ -146,7 +146,7 @@ def demo_dida_integration(translation_result=None):
     print("\n🧪 2. 创建普通中文任务...")
     normal_result = create_arxiv_task(
         report_type="daily",
-        summary="演示任务：今日发现1篇新论文",
+        summary="演示任务：今日研究者发布1篇新论文",
         details="这是一个演示任务，用于展示基本的任务创建功能。",
         paper_count=1,
         bilingual=False
@@ -164,7 +164,7 @@ def demo_dida_integration(translation_result=None):
     print("\n🧪 3. 创建双语翻译任务...")
     bilingual_task_result = create_arxiv_task(
         report_type="daily",
-        summary="演示任务：今日发现2篇高质量论文！",
+        summary="演示任务：今日研究者发布2篇高质量论文！",
         details="""监控了3位顶级研究者
 
 📊 论文分布:
@@ -250,14 +250,13 @@ def demo_full_workflow():
                 f"📄 **arXiv:** `{arxiv_id}`",
                 f"👥 **作者:** {authors}",
                 f"🏷️ **领域:** {subjects}",
-                f"📝 **摘要:** {paper['abstract'][:100]}...",
+                f"📝 **摘要:** {paper['abstract'][:100]}...",  # 测试展示截断
                 "---"
             ])
     
     details_lines.extend([
         "",
-        f"⏰ **执行时间:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-        "🤖 *由 ArXiv Follow 系统自动生成*"
+        f"⏰ **执行时间:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
     ])
     
     details = "\n".join(details_lines)

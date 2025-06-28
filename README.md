@@ -1,6 +1,6 @@
-# ArXiv 研究者论文监控系统
+# ArXiv 研究者动态监控系统
 
-这是一个自动化监控研究者在 arXiv 上发布论文的系统，支持每日和周报两种监控模式，以及基于主题的智能搜索。**现已支持 AI 增强的智能论文分析和报告生成！**
+这是一个自动化监控特定研究者在 arXiv 上发布论文的系统，支持每日研究者动态监控和周报汇总，以及基于交叉学科主题的智能搜索。**现已支持 AI 增强的智能论文分析和报告生成！**
 
 ## 🚀 特别挑战
 
@@ -11,9 +11,9 @@
 ## ✨ 功能特性
 
 ### 🔍 基础监控功能
-- 📄 **每日监控** - 自动检测研究者当天发布的新论文
-- 📚 **周报汇总** - 生成最近一周的论文报告  
-- 🎯 **主题搜索** - 基于研究领域的智能论文搜索
+- 📄 **每日研究者动态监控** - 自动检测特定研究者当天发布的新论文
+- 📚 **每周研究者动态汇总** - 生成特定研究者最近一周的论文报告  
+- 🎯 **交叉学科主题搜索** - 基于多个研究领域交集的智能论文搜索（AND逻辑）
 - 🧠 **智能日期回退** - 自动处理日期范围搜索无结果的情况
 
 ### 🤖 AI 智能增强功能
@@ -46,18 +46,22 @@ export DIDA_ACCESS_TOKEN="your_dida_access_token"    # 滴答清单集成
 
 #### 基础监控功能
 ```bash
-# 每日论文监控
+# 每日研究者动态监控
 uv run python daily_papers.py
 
-# 周报汇总
+# 每周研究者动态汇总
 uv run python weekly_papers.py
 
-# 主题搜索（AI + 安全）
+# 交叉学科主题搜索（预设：AI + 安全）
 uv run python topic_papers.py
 
-# 自定义主题搜索
-uv run python topic_papers.py "cs.AI,cs.LG"  # AI + 机器学习
+# 自定义交叉学科搜索
+uv run python topic_papers.py "cs.AI,cs.LG"     # AI 与 机器学习 的交叉领域
+uv run python topic_papers.py "cs.CV,cs.RO"     # 计算机视觉 与 机器人学 的交叉领域
+uv run python topic_papers.py "cs.CR,cs.DB"     # 密码学 与 数据库 的交叉领域
 ```
+
+> 💡 **重要说明**: 多个主题使用 **AND逻辑**（交集），即搜索同时属于所有指定领域的论文，这是真正的**交叉学科研究**。例如 `cs.AI,cs.LG` 只会返回同时标记为AI和机器学习的论文。
 
 #### AI 智能功能演示
 ```bash
@@ -73,9 +77,9 @@ uv run python test_intelligent_monitor.py
 
 ## 📋 输出示例
 
-### 传统监控输出
+### 研究者动态监控输出
 ```
-🔍 每日论文监控 - 获取研究者当天发布的论文
+🔍 每日研究者动态监控 - 获取特定研究者当天发布的论文
 时间: 2025-06-28 09:00:00
 
 ✅ 找到 1 篇新论文!
@@ -85,9 +89,26 @@ uv run python test_intelligent_monitor.py
 🌐 链接: https://arxiv.org/abs/2506.20008
 ```
 
+### 交叉学科主题搜索输出  
+```
+🎯 交叉学科主题搜索 - cs.AI ∩ cs.CR (AI与密码学交集)
+📅 搜索日期: 2025-01-15
+
+✅ 发现 3 篇交叉学科论文!
+📊 搜索结果: 3 篇符合 AI ∩ 密码学 条件的论文
+
+📄 1. Privacy-Preserving Federated Learning with Homomorphic Encryption
+🏷️ 学科标签: cs.AI, cs.CR, cs.LG
+🔗 https://arxiv.org/abs/2501.12345
+
+📄 2. Quantum-Safe Neural Network Training via Zero-Knowledge Proofs  
+🏷️ 学科标签: cs.AI, cs.CR
+🔗 https://arxiv.org/abs/2501.12346
+```
+
 ### AI 增强版输出
 ```
-🧠 每日论文监控 (AI增强版) - 2025-06-28
+🧠 每日研究者动态监控 (AI增强版) - 2025-06-28
 
 ## 🧠 AI智能分析总结
 📅 **今日概览**
@@ -112,11 +133,84 @@ uv run python test_intelligent_monitor.py
 
 系统已配置 GitHub Actions 自动化工作流：
 
-- **每日监控** - 每天 09:00/12:00/22:00 (中国时间)
-- **周报汇总** - 每周一 09:00 (中国时间)  
-- **主题搜索** - 每天 09:00 (中国时间)
+- **每日研究者动态监控** - 每天 09:00/12:00/22:00 (中国时间)
+- **每周研究者动态汇总** - 每周一 09:00 (中国时间)  
+- **交叉学科主题搜索** - 每天 09:00 (中国时间)
 
 支持手动触发，可自定义搜索主题和时间范围。AI 功能可根据配置自动启用。
+
+> 📝 **搜索逻辑说明**: 主题搜索使用AND逻辑，多个主题间为交集关系，适合寻找真正的交叉学科研究。
+
+## 🧭 交叉学科搜索详解
+
+### 🎯 搜索逻辑说明
+
+**重要概念**: 本系统的主题搜索采用 **AND逻辑**（交集），而非OR逻辑（并集）。
+
+| 输入格式 | 搜索逻辑 | 结果说明 | 示例场景 |
+|---------|---------|---------|----------|
+| `cs.AI,cs.LG` | cs.AI **AND** cs.LG | 同时属于AI和机器学习的论文 | 深度学习、神经网络 |
+| `cs.CV,cs.RO` | cs.CV **AND** cs.RO | 同时属于计算机视觉和机器人的论文 | 视觉SLAM、机器人感知 |
+| `cs.CR,cs.DB` | cs.CR **AND** cs.DB | 同时属于密码学和数据库的论文 | 隐私保护数据库、加密查询 |
+| `cs.AI,cs.CR,cs.LG` | cs.AI **AND** cs.CR **AND** cs.LG | 同时属于AI、密码学、机器学习的论文 | 隐私保护机器学习 |
+
+### 🔍 热门交叉学科组合
+
+#### 🤖 AI相关交叉领域
+```bash
+# AI + 机器学习
+uv run python topic_papers.py "cs.AI,cs.LG"
+
+# AI + 计算机视觉  
+uv run python topic_papers.py "cs.AI,cs.CV"
+
+# AI + 网络安全
+uv run python topic_papers.py "cs.AI,cs.CR"
+
+# AI + 机器人学
+uv run python topic_papers.py "cs.AI,cs.RO"
+
+# AI + 人机交互
+uv run python topic_papers.py "cs.AI,cs.HC"
+```
+
+#### 🔒 安全相关交叉领域
+```bash
+# 网络安全 + 机器学习
+uv run python topic_papers.py "cs.CR,cs.LG"
+
+# 网络安全 + 数据库
+uv run python topic_papers.py "cs.CR,cs.DB"
+
+# 网络安全 + 网络通信
+uv run python topic_papers.py "cs.CR,cs.NI"
+```
+
+#### 🤖 机器人相关交叉领域
+```bash
+# 机器人学 + 计算机视觉
+uv run python topic_papers.py "cs.RO,cs.CV"
+
+# 机器人学 + 机器学习
+uv run python topic_papers.py "cs.RO,cs.LG"
+
+# 机器人学 + 人机交互
+uv run python topic_papers.py "cs.RO,cs.HC"
+```
+
+### ⚡ 为什么使用AND逻辑？
+
+1. **精准定位**: 找到真正的交叉学科研究，而非简单的领域聚合
+2. **减少噪音**: 避免单一领域论文的干扰
+3. **发现创新**: 交叉学科往往是技术突破的来源
+4. **研究价值**: 交叉研究通常具有更高的影响因子和创新性
+
+### 💡 使用建议
+
+- **新兴领域探索**: 尝试3个或更多主题的组合
+- **研究方向确定**: 使用2个主题快速定位感兴趣的交叉领域  
+- **文献调研**: 系统性搜索特定交叉领域的最新进展
+- **合作机会**: 发现可能的跨领域合作研究方向
 
 ## 📚 完整文档中心
 
@@ -202,9 +296,9 @@ PAPER_ANALYSIS_CONFIG = {
 
 ```
 arxiv_follow/
-├── daily_papers.py              # 每日监控脚本
-├── weekly_papers.py             # 周报生成脚本  
-├── topic_papers.py              # 主题搜索脚本
+├── daily_papers.py              # 每日研究者动态监控脚本
+├── weekly_papers.py             # 每周研究者动态汇总脚本  
+├── topic_papers.py              # 交叉学科主题搜索脚本
 ├── follow_researchers.py        # 研究者跟踪脚本
 ├── dida_integration.py          # 滴答清单集成
 ├── intelligent_monitor.py       # 🧠 智能监控集成
@@ -228,11 +322,17 @@ arxiv_follow/
 
 ## 🎯 适用场景
 
-### 基础监控
-- 科研人员跟踪同行最新研究
-- 研究团队定期论文调研
-- 特定领域的论文监控订阅
-- 学术会议前的论文收集
+### 研究者动态监控
+- 科研人员跟踪特定研究者的最新研究
+- 研究团队定期监控合作伙伴动态
+- 导师跟踪学生或同事的论文发表
+- 学术竞争对手动态分析
+
+### 交叉学科研究发现
+- 发现真正的跨领域创新研究
+- 探索新兴交叉学科发展趋势
+- 寻找跨领域合作机会
+- 多学科背景的文献调研
 
 ### AI 智能增强
 - 论文质量和重要性自动评估

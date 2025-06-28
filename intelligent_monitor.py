@@ -129,7 +129,7 @@ class IntelligentPaperMonitor:
                 content_parts.append(f"**链接**: https://arxiv.org/abs/{arxiv_id}")
             
             if abstract:
-                content_parts.append(f"**摘要**: {abstract[:200]}...")
+                content_parts.append(f"**摘要**: {abstract}")
             
             content_parts.append("\n" + "-"*30)
         

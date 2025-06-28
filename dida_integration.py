@@ -148,8 +148,8 @@ class DidaIntegration:
         
         # 构建任务标题
         type_map = {
-            "daily": "📄 每日论文监控",
-            "weekly": "📚 周报论文汇总", 
+            "daily": "📄 每日研究者动态监控",
+            "weekly": "📚 每周研究者动态汇总", 
             "topic": "🎯 主题论文搜索"
         }
         
@@ -185,13 +185,30 @@ class DidaIntegration:
             translation_result = translate_arxiv_task(title, content, bilingual=True)
             
             if translation_result.get("success"):
-                final_title = translation_result['bilingual']['title']
-                final_content = translation_result['bilingual']['content']
-                translation_info = {
-                    "translation_success": True,
-                    "model_used": translation_result.get('model_used')
-                }
-                logger.info("成功生成双语版本任务")
+                # 验证翻译结果的有效性
+                bilingual_title = translation_result['bilingual']['title']
+                bilingual_content = translation_result['bilingual']['content']
+                
+                # 检查是否包含JSON格式残留
+                if ('```json' in bilingual_title or '"translated_' in bilingual_title or
+                    '```json' in bilingual_content or '"translated_' in bilingual_content):
+                    logger.error("检测到翻译结果包含JSON格式残留，翻译质量异常")
+                    logger.error(f"问题标题: {bilingual_title[:100]}...")
+                    logger.error(f"问题内容: {bilingual_content[:200]}...")
+                    
+                    # 使用原始内容而不是有问题的翻译
+                    translation_info = {
+                        "translation_success": False,
+                        "translation_error": "翻译结果包含JSON格式残留，质量异常"
+                    }
+                else:
+                    final_title = bilingual_title
+                    final_content = bilingual_content
+                    translation_info = {
+                        "translation_success": True,
+                        "model_used": translation_result.get('model_used')
+                    }
+                    logger.info("成功生成双语版本任务")
             else:
                 logger.warning(f"翻译失败，使用原始内容: {translation_result.get('error')}")
                 translation_info = {

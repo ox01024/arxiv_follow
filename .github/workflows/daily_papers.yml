@@ -1,4 +1,4 @@
-name: 📄 每日论文监控
+name: 📄 每日研究者动态监控
 
 on:
   # 定时执行 - 中国时间 9:00, 12:00, 22:00 (对应UTC 1:00, 4:00, 14:00)
@@ -43,7 +43,7 @@ jobs:
       run: |
         uv run python test_ci.py
     
-    - name: 🔍 运行每日论文监控
+    - name: 🔍 运行每日研究者动态监控
       run: |
         echo "🕐 当前时间 (UTC): $(date)"
         echo "🕘 北京时间: $(TZ='Asia/Shanghai' date)"
@@ -52,6 +52,7 @@ jobs:
       env:
         TZ: Asia/Shanghai  # 设置时区为中国时间
         DIDA_ACCESS_TOKEN: ${{ secrets.DIDA_ACCESS_TOKEN }}
+        OPEN_ROUTE_API_KEY: ${{ secrets.OPEN_ROUTE_API_KEY }}
     
     - name: 📊 保存运行日志
       if: always()

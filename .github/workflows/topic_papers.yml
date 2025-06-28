@@ -79,6 +79,7 @@ jobs:
       env:
         TZ: Asia/Shanghai  # 设置时区为中国时间
         DIDA_ACCESS_TOKEN: ${{ secrets.DIDA_ACCESS_TOKEN }}
+        OPEN_ROUTE_API_KEY: ${{ secrets.OPEN_ROUTE_API_KEY }}
     
     - name: 📊 保存运行结果
       if: always()

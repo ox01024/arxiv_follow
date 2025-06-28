@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-周报论文监控脚本 - 搜索研究者最近一周发布的论文
+每周研究者动态汇总脚本 - 搜索特定研究者最近一周发布的论文
 """
 
 import httpx
@@ -450,13 +450,13 @@ def create_weekly_dida_task(researchers: List[Dict[str, Any]],
         
         # 构建任务摘要（Markdown格式）
         if error:
-            summary = f"❌ **周报论文监控执行失败**\n\n**错误信息:** {error}"
+            summary = f"❌ **每周研究者动态汇总执行失败**\n\n**错误信息:** {error}"
             details = f"⏰ **执行时间:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         elif total_papers == 0:
-            summary = f"📚 **本周无新论文发现**"
+            summary = f"📚 **本周研究者无新论文发布**"
             details = f"👥 **监控研究者:** {researcher_count} 位\n📅 **监控周期:** {(datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')} 至 {datetime.now().strftime('%Y-%m-%d')}\n⏰ **执行时间:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         else:
-            summary = f"🎉 **本周发现 {total_papers} 篇新论文！**"
+            summary = f"🎉 **本周研究者发布 {total_papers} 篇新论文！**"
             # 构建详细信息（Markdown格式）
             details_lines = [f"👥 **监控研究者:** {researcher_count} 位"]
             details_lines.append(f"📅 **监控周期:** {(datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')} 至 {datetime.now().strftime('%Y-%m-%d')}")
@@ -489,8 +489,7 @@ def create_weekly_dida_task(researchers: List[Dict[str, Any]],
                             # 摘要信息（前250字符）
                             if paper.get('abstract'):
                                 abstract = paper['abstract']
-                                if len(abstract) > 250:
-                                    abstract = abstract[:250] + "..."
+                                
                                 details_lines.append(f"📝 **摘要:** {abstract}")
                             
                             # 提交日期
@@ -505,19 +504,16 @@ def create_weekly_dida_task(researchers: List[Dict[str, Any]],
                             # 评论信息
                             if paper.get('comments'):
                                 comments = paper['comments']
-                                if len(comments) > 100:
-                                    comments = comments[:100] + "..."
+                                
                                 details_lines.append(f"💬 **评论:** {comments}")
                             
                             details_lines.append("---")  # 分隔线
                         else:  # 其余论文显示标题和基本信息
                             # 使用Markdown链接格式
                             if url and arxiv_id:
-                                title_display = title if len(title) <= 100 else title[:100] + "..."
-                                details_lines.append(f"\n**{i}.** [{title_display}]({url}) `arXiv:{arxiv_id}`")
+                                details_lines.append(f"\n**{i}.** [{title}]({url}) `arXiv:{arxiv_id}`")
                             else:
-                                title_display = title if len(title) <= 120 else title[:120] + "..."
-                                details_lines.append(f"\n**{i}.** {title_display}")
+                                details_lines.append(f"\n**{i}.** {title}")
                             
                             # 简化的作者信息
                             if paper.get('authors'):
@@ -532,7 +528,6 @@ def create_weekly_dida_task(researchers: List[Dict[str, Any]],
                         details_lines.append("")
             
             details_lines.append(f"\n⏰ **执行时间:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            details_lines.append(f"\n🤖 *由 ArXiv Follow 系统自动生成*")
             details = "\n".join(details_lines)
         
         # 创建任务（支持双语翻译）
@@ -564,7 +559,7 @@ def main():
         # Google Sheets TSV 导出链接
         tsv_url = "https://docs.google.com/spreadsheets/d/1itjnV2U-Eh0F1T0LIGuLjzIhgL9f_OD8tbkMUG-Onic/export?format=tsv&id=1itjnV2U-Eh0F1T0LIGuLjzIhgL9f_OD8tbkMUG-Onic&gid=0"
         
-        print("📚 周报论文监控 - 获取研究者最近一周发布的论文")
+        print("📚 每周研究者动态汇总 - 获取特定研究者最近一周发布的论文")
         print(f"时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"URL: {tsv_url}\n")
         
@@ -581,7 +576,7 @@ def main():
             # 显示论文结果
             display_papers(all_papers, "最近一周")
             
-            print(f"\n✅ 周报监控完成 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            print(f"\n✅ 研究者动态汇总完成 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
             
             # 创建滴答清单任务
             create_weekly_dida_task(researchers, all_papers)

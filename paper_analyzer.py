@@ -177,7 +177,7 @@ class PaperAnalyzer:
         if sections:
             sections_text = "\n\n章节信息：\n"
             for section in sections[:5]:  # 只取前5个章节
-                sections_text += f"- {section['title']}: {section['content'][:300]}...\n"
+                sections_text += f"- {section['title']}: {section['content']}\n"
         
         prompt = f"""请对以下学术论文进行技术深度分析：
 
@@ -364,7 +364,7 @@ class PaperAnalyzer:
         
         # 构建总结提示词
         papers_summary = "\n\n".join([
-            f"论文 {i+1}: {analysis.get('paper_id', 'unknown')}\n内容摘要:\n{analysis.get('report_content', analysis.get('content', ''))[:500]}..."
+                            f"论文 {i+1}: {analysis.get('paper_id', 'unknown')}\n内容摘要:\n{analysis.get('report_content', analysis.get('content', ''))}"
             for i, analysis in enumerate(successful_analyses[:10])  # 最多总结10篇
         ])
         

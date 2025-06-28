@@ -480,8 +480,7 @@ def create_topic_dida_task(topics: List[str],
                         # 摘要信息（前200字符）
                         if paper.get('abstract'):
                             abstract = paper['abstract']
-                            if len(abstract) > 200:
-                                abstract = abstract[:200] + "..."
+                            
                             details_lines.append(f"📝 **摘要:** {abstract}")
                         
                         # 提交日期
@@ -496,14 +495,12 @@ def create_topic_dida_task(topics: List[str],
                         # 评论信息
                         if paper.get('comments'):
                             comments = paper['comments']
-                            if len(comments) > 100:
-                                comments = comments[:100] + "..."
+                            
                             details_lines.append(f"💬 **评论:** {comments}")
                         
                         details_lines.append("---")  # 分隔线
             
             details_lines.append(f"\n⏰ **执行时间:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            details_lines.append(f"\n🤖 *由 ArXiv Follow 系统自动生成*")
             details = "\n".join(details_lines)
         
         # 创建任务（支持双语翻译）

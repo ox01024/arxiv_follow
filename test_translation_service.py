@@ -100,7 +100,7 @@ def test_bilingual_translation():
         
         print(f"\n📝 双语内容预览:")
         bilingual_content = result['bilingual']['content']
-        print(f"   {bilingual_content[:200]}...")
+        print(f"   {bilingual_content[:200]}...")  # 测试展示截断
         
         print(f"\n🤖 使用模型: {result.get('model_used')}")
         return True

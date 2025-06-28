@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-每日论文监控脚本 - 搜索研究者当天发布的论文
+每日研究者动态监控脚本 - 搜索特定研究者当天发布的论文
 """
 
 import httpx
@@ -444,13 +444,13 @@ def create_daily_dida_task(researchers: List[Dict[str, Any]],
         
         # 构建任务摘要（Markdown格式）
         if error:
-            summary = f"❌ **每日论文监控执行失败**\n\n**错误信息:** {error}"
+            summary = f"❌ **每日研究者动态监控执行失败**\n\n**错误信息:** {error}"
             details = f"⏰ **执行时间:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         elif total_papers == 0:
-            summary = f"📄 **今日无新论文发现**"
+            summary = f"📄 **今日研究者无新论文发布**"
             details = f"👥 **监控研究者:** {researcher_count} 位\n⏰ **执行时间:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         else:
-            summary = f"🎉 **今日发现 {total_papers} 篇新论文！**"
+            summary = f"🎉 **今日研究者发布 {total_papers} 篇新论文！**"
             # 构建详细信息（Markdown格式）
             details_lines = [f"👥 **监控研究者:** {researcher_count} 位"]
             
@@ -481,8 +481,7 @@ def create_daily_dida_task(researchers: List[Dict[str, Any]],
                         # 摘要信息（前200字符）
                         if paper.get('abstract'):
                             abstract = paper['abstract']
-                            if len(abstract) > 200:
-                                abstract = abstract[:200] + "..."
+                            
                             details_lines.append(f"📝 **摘要:** {abstract}")
                         
                         # 提交日期
@@ -497,14 +496,12 @@ def create_daily_dida_task(researchers: List[Dict[str, Any]],
                         # 评论信息
                         if paper.get('comments'):
                             comments = paper['comments']
-                            if len(comments) > 100:
-                                comments = comments[:100] + "..."
+                            
                             details_lines.append(f"💬 **评论:** {comments}")
                         
                         details_lines.append("---")  # 分隔线
             
             details_lines.append(f"\n⏰ **执行时间:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-            details_lines.append(f"\n🤖 *由 ArXiv Follow 系统自动生成*")
             details = "\n".join(details_lines)
         
         # 创建任务（支持双语翻译）
@@ -536,7 +533,7 @@ def main():
         # Google Sheets TSV 导出链接
         tsv_url = "https://docs.google.com/spreadsheets/d/1itjnV2U-Eh0F1T0LIGuLjzIhgL9f_OD8tbkMUG-Onic/export?format=tsv&id=1itjnV2U-Eh0F1T0LIGuLjzIhgL9f_OD8tbkMUG-Onic&gid=0"
         
-        print("🔍 每日论文监控 - 获取研究者当天发布的论文")
+        print("🔍 每日研究者动态监控 - 获取特定研究者当天发布的论文")
         print(f"时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
         print(f"URL: {tsv_url}\n")
         

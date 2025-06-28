@@ -31,7 +31,7 @@ def check_environment():
     all_configured = True
     for var_name, var_value in env_vars.items():
         if var_value:
-            print(f"✅ {var_name}: {'*' * 10}...{var_value[-4:]}")
+            print(f"✅ {var_name}: {'*' * 10}...{var_value[-4:]}")  # 测试展示截断
         else:
             print(f"❌ {var_name}: 未设置")
             all_configured = False
@@ -108,7 +108,7 @@ def demo_paper_analysis(paper_data):
         if sig_result.get('success'):
             print("✅ 重要性分析完成")
             print("内容预览:")
-            print(sig_result.get('content', '')[:300] + "...")
+            print(sig_result.get('content', '')[:300] + "...")  # 测试展示截断
         else:
             print(f"❌ 重要性分析失败: {sig_result.get('error')}")
         
@@ -119,7 +119,7 @@ def demo_paper_analysis(paper_data):
         if tech_result.get('success'):
             print("✅ 技术分析完成")
             print("内容预览:")
-            print(tech_result.get('content', '')[:300] + "...")
+            print(tech_result.get('content', '')[:300] + "...")  # 测试展示截断
         else:
             print(f"❌ 技术分析失败: {tech_result.get('error')}")
         
