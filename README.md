@@ -2,6 +2,34 @@
 
 这是一个自动化监控特定研究者在 arXiv 上发布论文的系统，支持每日研究者动态监控和周报汇总，以及基于交叉学科主题的智能搜索。**现已支持 AI 增强的智能论文分析和报告生成！**
 
+## 🏗️ 项目架构
+
+项目已重构为标准的Python包结构，提供更好的模块化和可维护性：
+
+```
+arxiv_follow/
+├── src/arxiv_follow/          # 主包源代码
+│   ├── core/                  # 核心业务逻辑
+│   │   ├── collector.py       # 论文收集器
+│   │   ├── analyzer.py        # 论文分析器
+│   │   └── monitor.py         # 智能监控
+│   ├── services/              # 服务层
+│   │   ├── translation.py     # 翻译服务
+│   │   └── researcher.py      # 研究者服务
+│   ├── integrations/          # 第三方集成
+│   │   └── dida.py           # 滴答清单集成
+│   ├── cli/                   # 命令行工具
+│   │   ├── daily.py          # 每日监控
+│   │   ├── weekly.py         # 每周汇总
+│   │   └── topic.py          # 主题搜索
+│   └── config/                # 配置模块
+│       └── settings.py       # 配置文件
+├── tests/                     # 测试文件
+├── examples/                  # 示例代码
+├── docs/                      # 文档
+└── pyproject.toml            # 项目配置
+```
+
 ## 🚀 特别挑战
 
 > **"不写一行代码，构建一个项目，改掉喜欢自己写代码的坏毛病"**
@@ -26,6 +54,140 @@
 - 🤖 **GitHub Actions自动化** - 定时执行，中国时区适配
 - 📝 **滴答清单集成** - 自动创建任务到你的滴答清单，支持智能任务增强
 - 🌏 **双语翻译服务** - 基于LLM的智能中英双语翻译
+
+## 🚀 快速开始
+
+### 环境准备
+```bash
+# 安装 UV 包管理器
+curl -LsSf https://astral.sh/uv/install.sh | sh
+
+# 安装项目依赖
+uv sync
+
+# 安装为可编辑包（推荐）
+uv pip install -e .
+
+# 配置环境变量（可选，启用AI功能需要）
+export OPEN_ROUTE_API_KEY="your_openrouter_api_key"  # AI分析功能
+export DIDA_ACCESS_TOKEN="your_dida_access_token"    # 滴答清单集成
+```
+
+### 使用方式
+
+#### 📟 命令行工具（推荐）
+```bash
+# 安装后可直接使用命令行工具
+arxiv-daily      # 每日研究者动态监控
+arxiv-weekly     # 每周研究者动态汇总  
+arxiv-topic      # 交叉学科主题搜索
+
+# 自定义交叉学科搜索
+arxiv-topic "cs.AI,cs.LG"     # AI 与 机器学习 的交叉领域
+arxiv-topic "cs.CV,cs.RO"     # 计算机视觉 与 机器人学 的交叉领域
+```
+
+#### 🐍 作为Python模块
+```bash
+# 作为模块运行
+python -m arxiv_follow.cli.daily
+python -m arxiv_follow.cli.weekly
+python -m arxiv_follow.cli.topic "cs.AI,cs.CR"
+```
+
+#### 🔧 兼容性脚本（向后兼容）
+```bash
+# 这些脚本仍然有效
+python arxiv_daily.py
+python arxiv_weekly.py
+python arxiv_topic.py "cs.AI,cs.LG"
+
+# 或者使用uv
+uv run python arxiv_daily.py
+uv run python arxiv_weekly.py
+uv run python arxiv_topic.py
+```
+
+### 📚 作为库使用
+
+```python
+# 导入核心组件
+from arxiv_follow import PaperCollector, PaperAnalyzer, TranslationService
+from arxiv_follow.core import IntelligentPaperMonitor
+from arxiv_follow.services import ResearcherService
+from arxiv_follow.integrations import DidaIntegration
+
+# 使用论文收集器
+collector = PaperCollector()
+paper_data = collector.collect_paper_content("2501.12345")
+
+# 使用论文分析器
+analyzer = PaperAnalyzer()
+analysis = analyzer.analyze_paper_significance(paper_data)
+
+# 使用翻译服务
+translator = TranslationService()
+result = translator.translate_task_content("标题", "内容")
+
+# 使用研究者服务
+researcher_service = ResearcherService()
+researchers = researcher_service.fetch_researchers_from_tsv(url)
+```
+
+## 🎯 演示和测试
+
+### 🧪 运行演示
+```bash
+# 🧠 智能监控完整演示
+python examples/intelligent_monitor.py
+
+# 🌐 双语翻译功能演示
+python examples/bilingual_translation.py
+
+# 🔍 搜索功能演示
+python examples/search_demo.py
+```
+
+### 🧪 运行测试
+
+项目包含完整的测试套件，确保代码质量和功能正确性：
+
+```bash
+# 使用测试运行器（推荐）
+python run_tests.py --mode unit          # 单元测试
+python run_tests.py --mode smoke         # 冒烟测试
+python run_tests.py --mode integration   # 集成测试（需要API密钥）
+python run_tests.py --mode all           # 所有测试
+
+# 生成覆盖率报告
+python run_tests.py --mode unit --coverage
+
+# 直接使用pytest
+pytest tests/                            # 运行所有测试
+pytest tests/test_core/                  # 运行核心模块测试
+pytest tests/ --cov=src/arxiv_follow     # 生成覆盖率报告
+```
+
+**测试覆盖**:
+- ✅ 核心模块测试（论文收集器、分析器、智能监控）
+- ✅ 服务层测试（研究者服务、翻译服务）
+- ✅ 第三方集成测试（滴答清单API）
+- ✅ 配置模块测试
+- ✅ 自动化CI/CD测试
+
+查看 [TESTING.md](TESTING.md) 了解详细的测试指南。
+
+### 🔧 代码质量检查
+```bash
+# 代码格式化
+black src/ tests/
+
+# 类型检查
+mypy src/
+
+# 代码规范检查
+flake8 src/ tests/
+```
 
 ## 🚀 快速开始
 
