@@ -1,0 +1,124 @@
+name: 🎯 主题论文监控 - AI & Security
+
+on:
+  # 复用每日监控的第一个时机 - 中国时间 09:00 (对应UTC 1:00)
+  schedule:
+    - cron: '0 1 * * *'   # 每日 中国时间 09:00
+  
+  # 复用周报监控的时机 - 每周一中国时间 09:00，生成周报
+  # 注意：这个会与上面的每日时机在周一重叠，我们在脚本中处理
+  
+  # 支持手动触发
+  workflow_dispatch:
+    inputs:
+      topics:
+        description: '搜索主题 (用逗号分隔，如: cs.AI,cs.CR)'
+        required: false
+        default: 'cs.AI,cs.CR'
+        type: string
+      days_back:
+        description: '搜索最近几天的论文'
+        required: false
+        default: '3'
+        type: string
+  
+  # 推送到main分支时也触发（用于测试）
+  push:
+    branches: [ main ]
+    paths: 
+      - 'topic_papers.py'
+      - '.github/workflows/topic_papers.yml'
+
+jobs:
+  topic-monitor:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+    
+    - name: 🐍 设置 Python 环境
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: 📦 安装 UV 包管理器
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    
+    - name: ⚡ 安装依赖
+      run: |
+        uv sync
+    
+    - name: 🎯 运行主题论文搜索
+      run: |
+        echo "🕐 当前时间 (UTC): $(date)"
+        echo "🕘 北京时间: $(TZ='Asia/Shanghai' date)"
+        echo "🏷️  搜索主题: ${{ github.event.inputs.topics || 'cs.AI,cs.CR' }}"
+        echo "📅 搜索范围: 最近 ${{ github.event.inputs.days_back || '3' }} 天"
+        echo "=========================================="
+        
+        # 设置搜索参数
+        TOPICS="${{ github.event.inputs.topics || 'cs.AI,cs.CR' }}"
+        
+        # 运行主题搜索
+        uv run python topic_papers.py "$TOPICS"
+        
+        # 检查是否是周一，如果是则生成周报总结
+        if [ "$(date +%u)" = "1" ]; then
+          echo ""
+          echo "📊 今天是周一，生成本周主题论文总结..."
+          echo "=========================================="
+          # TODO: 可以添加周报生成逻辑
+        fi
+      env:
+        TZ: Asia/Shanghai  # 设置时区为中国时间
+    
+    - name: 📊 保存运行结果
+      if: always()
+      run: |
+        mkdir -p logs artifacts
+        
+        # 保存运行日志
+        echo "运行时间: $(TZ='Asia/Shanghai' date)" > logs/topic_$(date +%Y%m%d_%H%M).log
+        echo "脚本: topic_papers.py" >> logs/topic_$(date +%Y%m%d_%H%M).log
+        echo "搜索主题: ${{ github.event.inputs.topics || 'cs.AI,cs.CR' }}" >> logs/topic_$(date +%Y%m%d_%H%M).log
+        
+        # 如果有生成的JSON结果文件，移动到artifacts目录
+        if [ -d "reports" ] && [ "$(ls -A reports/topic_papers_*.json 2>/dev/null)" ]; then
+          cp reports/topic_papers_*.json artifacts/ 2>/dev/null || true
+          echo "📄 已保存搜索结果文件" >> logs/topic_$(date +%Y%m%d_%H%M).log
+        fi
+        
+    - name: 📝 上传运行日志
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: topic-logs-${{ github.run_number }}
+        path: logs/
+        retention-days: 30
+        
+    - name: 📄 上传搜索结果
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: topic-results-${{ github.run_number }}
+        path: artifacts/
+        retention-days: 90  # 搜索结果保留90天
+        
+    - name: 📈 显示搜索统计
+      if: always()
+      run: |
+        echo "=========================================="
+        echo "📊 本次搜索统计："
+        echo "🕘 执行时间: $(TZ='Asia/Shanghai' date)"
+        echo "🏷️  搜索主题: ${{ github.event.inputs.topics || 'cs.AI,cs.CR' }}"
+        
+        # 如果有结果文件，显示论文数量
+        if [ -f artifacts/topic_papers_*.json ]; then
+          PAPER_COUNT=$(python3 -c 'import json, glob; files = glob.glob("artifacts/topic_papers_*.json"); print(len(json.load(open(files[0], "r", encoding="utf-8")).get("papers", [])) if files else 0)' 2>/dev/null || echo "N/A")
+          echo "📄 找到论文: $PAPER_COUNT 篇"
+        fi
+        
+        echo "✅ 任务完成" 
