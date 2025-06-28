@@ -181,8 +181,8 @@ class DidaIntegration:
         translation_info = {}
         
         if bilingual:
-            logger.info("开始生成双语版本任务...")
-            translation_result = translate_arxiv_task(title, content, bilingual=True)
+            logger.info("开始生成智能双语版本任务...")
+            translation_result = translate_arxiv_task(title, content, bilingual=True, smart_mode=True)
             
             if translation_result.get("success"):
                 # 验证翻译结果的有效性

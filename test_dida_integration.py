@@ -141,18 +141,25 @@ def test_bilingual_task_creation():
         print("💡 设置 OPEN_ROUTE_API_KEY 环境变量以启用双语翻译测试")
         return True
     
-    # 测试双语任务创建
-    print("🌐 测试双语任务创建...")
+    # 测试智能双语任务创建（包含英文论文信息）
+    print("🌐 测试智能双语任务创建...")
     result = create_arxiv_task(
         report_type="daily",
         summary="今日研究者发布2篇新论文！",
         details="""监控了3位研究者
 
 📊 论文分布:
-• 张三: 1篇
-  1. Deep Learning Approaches for Cybersecurity
-• 李四: 1篇  
-  1. Federated Learning Privacy Protection
+• Zhang Wei: 1篇
+  1. **Deep Learning Approaches for Network Intrusion Detection**
+     📄 **arXiv:** 2501.12345
+     👥 **作者:** Zhang Wei, John Smith, Alice Brown
+     📝 **摘要:** This paper presents a comprehensive survey of deep learning techniques for network intrusion detection systems.
+     
+• Li Ming: 1篇  
+  1. **Federated Learning with Privacy Protection Mechanisms**
+     📄 **arXiv:** 2501.12346
+     👥 **作者:** Li Ming, Sarah Johnson
+     📝 **摘要:** We propose a novel federated learning framework that incorporates advanced privacy protection mechanisms for distributed machine learning.
 
 ⏰ 执行时间: 2025-01-15 09:00:15""",
         paper_count=2,

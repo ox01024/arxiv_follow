@@ -3,11 +3,11 @@ LLM翻译服务模块 - 使用OpenRouter API进行中英双语翻译
 支持Gemini 2.0 Flash Lite模型，对Task信息进行智能翻译
 """
 
-import httpx
 import os
 import json
-from typing import Dict, Any, Optional
 import logging
+from typing import Dict, Any, Optional
+from openai import OpenAI
 
 # 配置日志
 logger = logging.getLogger(__name__)
@@ -26,20 +26,24 @@ class TranslationService:
         self.base_url = "https://openrouter.ai/api/v1"
         self.model = "google/gemini-2.0-flash-lite-001"
         
-        self.headers = {
-            "Authorization": f"Bearer {self.api_key}",
-            "Content-Type": "application/json",
-            "HTTP-Referer": "https://github.com/arxiv-follow",  # 可选：用于OpenRouter统计
-            "X-Title": "ArXiv Follow Translation Service"  # 可选：用于OpenRouter统计
-        }
-        
-        if not self.api_key:
+        # 初始化OpenAI客户端，配置为使用OpenRouter
+        if self.api_key:
+            self.client = OpenAI(
+                api_key=self.api_key,
+                base_url=self.base_url,
+                default_headers={
+                    "HTTP-Referer": "https://github.com/arxiv-follow",  # 可选：用于OpenRouter统计
+                    "X-Title": "ArXiv Follow Translation Service"  # 可选：用于OpenRouter统计
+                }
+            )
+        else:
+            self.client = None
             logger.warning("未找到OpenRouter API密钥，翻译功能将被禁用")
             logger.info("请设置环境变量: OPEN_ROUTE_API_KEY")
     
     def is_enabled(self) -> bool:
         """检查翻译服务是否可用"""
-        return bool(self.api_key)
+        return bool(self.api_key and self.client)
     
     def translate_task_content(self, 
                              title: str, 
@@ -97,168 +101,145 @@ class TranslationService:
 7. JSON字符串中的换行符请用\\n表示
 8. 保持原始内容的完整性，不要省略任何信息"""
 
-            # 构建API请求
-            request_data = {
-                "model": self.model,
-                "messages": [
-                    {
-                        "role": "user",
-                        "content": prompt
-                    }
-                ],
-                "max_tokens": 2000,
-                "temperature": 0.3,  # 较低的温度以确保翻译一致性
-                "top_p": 0.9
-            }
-            
-            # 发送请求
-            with httpx.Client(timeout=60.0) as client:
-                response = client.post(
-                    f"{self.base_url}/chat/completions",
-                    headers=self.headers,
-                    json=request_data
+            # 使用OpenAI SDK发送请求
+            try:
+                response = self.client.chat.completions.create(
+                    model=self.model,
+                    messages=[
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    max_tokens=2000,
+                    temperature=0.3,  # 较低的温度以确保翻译一致性
+                    top_p=0.9,
+                    timeout=60.0
                 )
                 
-                if response.status_code == 200:
-                    result = response.json()
-                    translated_text = result["choices"][0]["message"]["content"].strip()
+                translated_text = response.choices[0].message.content.strip()
+                
+                # 尝试解析JSON结果
+                try:
+                    # 清理和提取JSON部分
+                    cleaned_text = translated_text.strip()
                     
-                    # 尝试解析JSON结果
-                    try:
-                        # 清理和提取JSON部分
-                        cleaned_text = translated_text.strip()
+                    # 移除可能的代码块标记
+                    if "```json" in cleaned_text:
+                        json_start = cleaned_text.find("```json") + 7
+                        json_end = cleaned_text.find("```", json_start)
+                        if json_end == -1:
+                            json_end = len(cleaned_text)
+                        json_text = cleaned_text[json_start:json_end].strip()
+                    elif cleaned_text.startswith("```") and cleaned_text.endswith("```"):
+                        # 处理只有```包围的情况
+                        json_text = cleaned_text[3:-3].strip()
+                    elif "{" in cleaned_text and "}" in cleaned_text:
+                        # 提取JSON对象
+                        json_start = cleaned_text.find("{")
+                        json_end = cleaned_text.rfind("}") + 1
+                        json_text = cleaned_text[json_start:json_end]
+                    else:
+                        json_text = cleaned_text
+                    
+                    # 再次清理可能的前后缀
+                    json_text = json_text.strip()
+                    if json_text.startswith("json"):
+                        json_text = json_text[4:].strip()
+                    
+                    logger.debug(f"准备解析的JSON文本: {json_text[:200]}...")
+                    translation_result = json.loads(json_text)
+                    
+                    # 验证结果格式
+                    if not isinstance(translation_result, dict):
+                        raise ValueError("翻译结果不是有效的JSON对象")
+                    
+                    # 确保有必要的字段
+                    translated_title = translation_result.get("translated_title", title)
+                    translated_content = translation_result.get("translated_content", content)
+                    
+                    logger.info(f"成功翻译任务内容: {title[:30]}...")
+                    
+                    return {
+                        "success": True,
+                        "translated_title": translated_title,
+                        "translated_content": translated_content,
+                        "model_used": self.model,
+                        "source_lang": source_lang,
+                        "target_lang": target_lang
+                    }
+                    
+                except (json.JSONDecodeError, ValueError) as e:
+                    logger.warning(f"翻译结果JSON解析失败: {e}")
+                    logger.warning(f"原始响应内容: {translated_text[:500]}...")
+                    
+                    # 降级处理：清理可能存在的JSON格式标记
+                    cleaned_text = translated_text
+                    
+                    # 移除JSON代码块标记
+                    if "```json" in cleaned_text:
+                        cleaned_text = cleaned_text.replace("```json", "").replace("```", "")
+                    
+                    # 移除JSON格式字符串
+                    if '"translated_title":' in cleaned_text or '"translated_content":' in cleaned_text:
+                        # 尝试提取可能的标题和内容
+                        lines = [line.strip() for line in cleaned_text.split('\n') if line.strip()]
                         
-                        # 移除可能的代码块标记
-                        if "```json" in cleaned_text:
-                            json_start = cleaned_text.find("```json") + 7
-                            json_end = cleaned_text.find("```", json_start)
-                            if json_end == -1:
-                                json_end = len(cleaned_text)
-                            json_text = cleaned_text[json_start:json_end].strip()
-                        elif cleaned_text.startswith("```") and cleaned_text.endswith("```"):
-                            # 处理只有```包围的情况
-                            json_text = cleaned_text[3:-3].strip()
-                        elif "{" in cleaned_text and "}" in cleaned_text:
-                            # 提取JSON对象
-                            json_start = cleaned_text.find("{")
-                            json_end = cleaned_text.rfind("}") + 1
-                            json_text = cleaned_text[json_start:json_end]
+                        # 过滤掉JSON格式行
+                        content_lines = []
+                        for line in lines:
+                            if not (line.startswith('{') or line.startswith('"') or 
+                                   line.startswith('}') or line.endswith(',') or
+                                   '"translated_' in line):
+                                content_lines.append(line)
+                        
+                        if content_lines:
+                            translated_title = content_lines[0] if content_lines else title
+                            translated_content = '\n'.join(content_lines[1:]) if len(content_lines) > 1 else content_lines[0] if content_lines else content
                         else:
-                            json_text = cleaned_text
-                        
-                        # 再次清理可能的前后缀
-                        json_text = json_text.strip()
-                        if json_text.startswith("json"):
-                            json_text = json_text[4:].strip()
-                        
-                        logger.debug(f"准备解析的JSON文本: {json_text[:200]}...")
-                        translation_result = json.loads(json_text)
-                        
-                        # 验证结果格式
-                        if not isinstance(translation_result, dict):
-                            raise ValueError("翻译结果不是有效的JSON对象")
-                        
-                        # 确保有必要的字段
-                        translated_title = translation_result.get("translated_title", title)
-                        translated_content = translation_result.get("translated_content", content)
-                        
-                        logger.info(f"成功翻译任务内容: {title[:30]}...")
-                        
-                        return {
-                            "success": True,
-                            "translated_title": translated_title,
-                            "translated_content": translated_content,
-                            "model_used": self.model,
-                            "source_lang": source_lang,
-                            "target_lang": target_lang
-                        }
-                        
-                    except (json.JSONDecodeError, ValueError) as e:
-                        logger.warning(f"翻译结果JSON解析失败: {e}")
-                        logger.warning(f"原始响应内容: {translated_text[:500]}...")
-                        
-                        # 降级处理：清理可能存在的JSON格式标记
-                        cleaned_text = translated_text
-                        
-                        # 移除JSON代码块标记
-                        if "```json" in cleaned_text:
-                            cleaned_text = cleaned_text.replace("```json", "").replace("```", "")
-                        
-                        # 移除JSON格式字符串
-                        if '"translated_title":' in cleaned_text or '"translated_content":' in cleaned_text:
-                            # 尝试提取可能的标题和内容
-                            lines = [line.strip() for line in cleaned_text.split('\n') if line.strip()]
-                            
-                            # 过滤掉JSON格式行
-                            content_lines = []
-                            for line in lines:
-                                if not (line.startswith('{') or line.startswith('"') or 
-                                       line.startswith('}') or line.endswith(',') or
-                                       '"translated_' in line):
-                                    content_lines.append(line)
-                            
-                            if content_lines:
-                                translated_title = content_lines[0] if content_lines else title
-                                translated_content = '\n'.join(content_lines[1:]) if len(content_lines) > 1 else content_lines[0] if content_lines else content
-                            else:
-                                # 如果无法提取，则返回失败
-                                logger.error("无法从JSON解析失败的响应中提取有效内容")
-                                return {
-                                    "success": False,
-                                    "error": f"JSON解析失败且无法提取有效内容: {e}",
-                                    "translated_title": title,
-                                    "translated_content": content
-                                }
-                        else:
-                            # 普通文本处理
-                            lines = cleaned_text.split('\n')
-                            translated_title = lines[0] if lines else title
-                            translated_content = '\n'.join(lines[1:]) if len(lines) > 1 else cleaned_text
-                        
-                        # 最后验证结果不包含JSON格式
-                        if '"translated_title":' in translated_title or '"translated_content":' in translated_title:
-                            logger.error("降级处理后标题仍包含JSON格式，翻译失败")
+                            # 如果无法提取，则返回失败
+                            logger.error("无法从JSON解析失败的响应中提取有效内容")
                             return {
                                 "success": False,
-                                "error": f"JSON解析失败且降级处理无效: {e}",
+                                "error": f"JSON解析失败且无法提取有效内容: {e}",
                                 "translated_title": title,
                                 "translated_content": content
                             }
-                        
-                        return {
-                            "success": True,
-                            "translated_title": translated_title,
-                            "translated_content": translated_content,
-                            "model_used": self.model,
-                            "source_lang": source_lang,
-                            "target_lang": target_lang,
-                            "note": "使用降级解析"
-                        }
-                
-                else:
-                    error_msg = f"API调用失败: {response.status_code}"
-                    try:
-                        error_detail = response.json()
-                        error_msg += f" - {error_detail.get('error', {}).get('message', response.text)}"
-                    except:
-                        error_msg += f" - {response.text}"
+                    else:
+                        # 普通文本处理
+                        lines = cleaned_text.split('\n')
+                        translated_title = lines[0] if lines else title
+                        translated_content = '\n'.join(lines[1:]) if len(lines) > 1 else cleaned_text
                     
-                    logger.error(error_msg)
+                    # 最后验证结果不包含JSON格式
+                    if '"translated_title":' in translated_title or '"translated_content":' in translated_title:
+                        logger.error("降级处理后标题仍包含JSON格式，翻译失败")
+                        return {
+                            "success": False,
+                            "error": f"JSON解析失败且降级处理无效: {e}",
+                            "translated_title": title,
+                            "translated_content": content
+                        }
+                    
                     return {
-                        "success": False,
-                        "error": error_msg,
-                        "translated_title": title,
-                        "translated_content": content
+                        "success": True,
+                        "translated_title": translated_title,
+                        "translated_content": translated_content,
+                        "model_used": self.model,
+                        "source_lang": source_lang,
+                        "target_lang": target_lang,
+                        "note": "使用降级解析"
                     }
                     
-        except httpx.RequestError as e:
-            logger.error(f"网络请求错误: {e}")
-            return {
-                "success": False, 
-                "error": f"网络错误: {e}",
-                "translated_title": title,
-                "translated_content": content
-            }
+            except Exception as e:
+                logger.error(f"API调用失败: {e}")
+                return {
+                    "success": False,
+                    "error": f"API调用失败: {e}",
+                    "translated_title": title,
+                    "translated_content": content
+                }
+                
         except Exception as e:
             logger.error(f"翻译时发生未知错误: {e}")
             return {
@@ -337,6 +318,197 @@ English Version:
                 "english": {"title": title, "content": content},
                 "bilingual": {"title": title, "content": content}
             }
+
+    def translate_mixed_content_to_bilingual(self, 
+                                           title: str, 
+                                           content: str) -> Dict[str, Any]:
+        """
+        生成中英双语版本的任务内容，智能处理包含英文论文信息的中文报告
+        
+        Args:
+            title: 原始任务标题（中文）
+            content: 原始任务内容（包含英文论文信息的中文报告）
+            
+        Returns:
+            包含中英双语版本的结果
+        """
+        if not self.is_enabled():
+            return {
+                "success": False,
+                "error": "翻译服务未启用",
+                "chinese": {"title": title, "content": content},
+                "english": {"title": title, "content": content},
+                "bilingual": {"title": title, "content": content}
+            }
+        
+        # 首先创建中文版本 - 将论文信息翻译为中文，但保持研究者名字不变
+        chinese_result = self._translate_to_chinese_with_preserved_names(title, content)
+        
+        if not chinese_result.get("success"):
+            logger.warning(f"中文版本生成失败: {chinese_result.get('error')}")
+            chinese_title = title
+            chinese_content = content
+        else:
+            chinese_title = chinese_result["translated_title"]
+            chinese_content = chinese_result["translated_content"]
+        
+        # 然后创建英文版本
+        english_result = self.translate_task_content(
+            title=chinese_title,
+            content=chinese_content,
+            source_lang="zh",
+            target_lang="en"
+        )
+        
+        if english_result.get("success"):
+            english_title = english_result["translated_title"]
+            english_content = english_result["translated_content"]
+            
+            # 生成双语版本
+            bilingual_title = f"{chinese_title} / {english_title}"
+            bilingual_content = f"""中文版本 / Chinese Version:
+{chinese_content}
+
+---
+
+English Version:
+{english_content}"""
+            
+            return {
+                "success": True,
+                "chinese": {
+                    "title": chinese_title,
+                    "content": chinese_content
+                },
+                "english": {
+                    "title": english_title,
+                    "content": english_content
+                },
+                "bilingual": {
+                    "title": bilingual_title,
+                    "content": bilingual_content
+                },
+                "model_used": english_result.get("model_used"),
+                "translation_mode": "mixed_content"
+            }
+        else:
+            logger.warning(f"英文翻译失败，返回中文版本: {english_result.get('error')}")
+            return {
+                "success": True,
+                "chinese": {
+                    "title": chinese_title,
+                    "content": chinese_content
+                },
+                "english": {
+                    "title": chinese_title,
+                    "content": chinese_content
+                },
+                "bilingual": {
+                    "title": chinese_title,
+                    "content": chinese_content
+                },
+                "translation_mode": "chinese_only",
+                "english_translation_error": english_result.get('error')
+            }
+
+    def _translate_to_chinese_with_preserved_names(self, title: str, content: str) -> Dict[str, Any]:
+        """
+        将包含英文论文信息的中文报告翻译为完全中文版本，但保持研究者名字不变
+        
+        Args:
+            title: 原始标题
+            content: 原始内容（包含英文论文信息）
+            
+        Returns:
+            翻译结果
+        """
+        prompt = f"""请将以下论文监控报告中的英文论文信息翻译为中文，但保持以下要求：
+
+1. 保持研究者的姓名不变（如 Zhang Wei, Li Ming 等人名保持英文）
+2. 将论文标题翻译为中文
+3. 将论文摘要翻译为中文
+4. 将其他英文内容翻译为中文
+5. 保持原有的格式和结构
+6. 保持 emoji 表情符号不变
+7. 保持 arXiv ID、链接等技术信息不变
+
+请直接返回翻译后的内容，不要添加任何额外的说明。
+
+标题: {title}
+
+内容:
+{content}
+
+请提供翻译后的结果，格式为JSON：
+{{
+    "translated_title": "翻译后的标题",
+    "translated_content": "翻译后的内容"
+}}"""
+
+        try:
+            response = self.client.chat.completions.create(
+                model=self.model,
+                messages=[
+                    {
+                        "role": "user",
+                        "content": prompt
+                    }
+                ],
+                max_tokens=3000,
+                temperature=0.3,
+                timeout=60.0
+            )
+            
+            translated_text = response.choices[0].message.content.strip()
+            
+            # 尝试解析JSON结果
+            try:
+                # 清理和提取JSON部分
+                cleaned_text = translated_text.strip()
+                
+                # 移除可能的代码块标记
+                if "```json" in cleaned_text:
+                    json_start = cleaned_text.find("```json") + 7
+                    json_end = cleaned_text.find("```", json_start)
+                    if json_end == -1:
+                        json_end = len(cleaned_text)
+                    json_text = cleaned_text[json_start:json_end].strip()
+                elif cleaned_text.startswith("```") and cleaned_text.endswith("```"):
+                    json_text = cleaned_text[3:-3].strip()
+                elif "{" in cleaned_text and "}" in cleaned_text:
+                    json_start = cleaned_text.find("{")
+                    json_end = cleaned_text.rfind("}") + 1
+                    json_text = cleaned_text[json_start:json_end]
+                else:
+                    json_text = cleaned_text
+                
+                # 再次清理可能的前后缀
+                json_text = json_text.strip()
+                if json_text.startswith("json"):
+                    json_text = json_text[4:].strip()
+                
+                logger.debug(f"准备解析的JSON文本: {json_text[:200]}...")
+                translation_result = json.loads(json_text)
+                
+                if isinstance(translation_result, dict):
+                    return {
+                        "success": True,
+                        "translated_title": translation_result.get("translated_title", title),
+                        "translated_content": translation_result.get("translated_content", content),
+                        "model": self.model
+                    }
+                else:
+                    logger.error("翻译结果不是有效的字典格式")
+                    return {"success": False, "error": "翻译结果格式无效"}
+                    
+            except json.JSONDecodeError as e:
+                logger.error(f"JSON解析失败: {e}")
+                logger.error(f"响应内容: {translated_text[:500]}...")
+                return {"success": False, "error": f"JSON解析失败: {e}"}
+                
+        except Exception as e:
+            logger.error(f"中文翻译过程中发生错误: {e}")
+            return {"success": False, "error": f"翻译过程错误: {e}"}
     
     def test_connection(self) -> Dict[str, Any]:
         """
@@ -380,7 +552,7 @@ English Version:
 translation_service = TranslationService()
 
 
-def translate_arxiv_task(title: str, content: str, bilingual: bool = True) -> Dict[str, Any]:
+def translate_arxiv_task(title: str, content: str, bilingual: bool = True, smart_mode: bool = True) -> Dict[str, Any]:
     """
     便捷函数：翻译ArXiv论文监控任务内容
     
@@ -388,12 +560,16 @@ def translate_arxiv_task(title: str, content: str, bilingual: bool = True) -> Di
         title: 任务标题
         content: 任务内容
         bilingual: 是否生成双语版本
+        smart_mode: 是否使用智能翻译模式（处理包含英文论文信息的中文报告）
         
     Returns:
         翻译结果
     """
     if bilingual:
-        return translation_service.translate_to_bilingual(title, content)
+        if smart_mode:
+            return translation_service.translate_mixed_content_to_bilingual(title, content)
+        else:
+            return translation_service.translate_to_bilingual(title, content)
     else:
         return translation_service.translate_task_content(title, content)
 

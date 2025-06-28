@@ -109,6 +109,73 @@ def test_bilingual_translation():
         return False
 
 
+def test_smart_bilingual_translation():
+    """测试智能双语翻译功能（包含英文论文信息）"""
+    print("\n🧪 测试4: 智能双语翻译测试")
+    print("-" * 40)
+    
+    test_title = "📄 每日论文监控 - 2025-01-15"
+    test_content = """🎉 今日发现 2 篇新论文！
+
+📊 共发现 2 篇论文
+
+📝 详细信息:
+监控了 3 位研究者
+
+📊 论文分布:
+• Zhang Wei: 1 篇
+  1. **Transformer-based Anomaly Detection in Network Traffic**
+     📄 **arXiv:** 2501.12345
+     👥 **作者:** Zhang Wei, John Smith, Alice Brown
+     📝 **摘要:** This paper presents a novel transformer-based approach for detecting network anomalies in real-time cybersecurity systems. Our method achieves superior performance compared to traditional machine learning approaches.
+     
+• Li Ming: 1 篇
+  1. **Federated Learning with Differential Privacy for Healthcare Data**
+     📄 **arXiv:** 2501.12346  
+     👥 **作者:** Li Ming, Sarah Johnson, Michael Chen
+     📝 **摘要:** We propose a federated learning framework that incorporates differential privacy mechanisms to protect sensitive healthcare data while maintaining model performance.
+
+⏰ 生成时间: 2025-01-15 09:00:15
+🤖 由 ArXiv Follow 系统自动生成"""
+    
+    # 测试智能翻译模式
+    smart_result = translate_arxiv_task(test_title, test_content, bilingual=True, smart_mode=True)
+    
+    if smart_result.get("success"):
+        print("✅ 智能双语翻译测试成功")
+        print(f"🔧 翻译模式: {smart_result.get('translation_mode', 'unknown')}")
+        
+        print(f"\n📋 中文标题:")
+        print(f"   {smart_result['chinese']['title']}")
+        
+        print(f"\n📝 中文内容预览:")
+        chinese_content = smart_result['chinese']['content']
+        print(f"   {chinese_content[:300]}...")
+        
+        print(f"\n📝 英文内容预览:")
+        english_content = smart_result['english']['content']
+        print(f"   {english_content[:300]}...")
+        
+        print(f"\n🤖 使用模型: {smart_result.get('model_used')}")
+        
+        # 检查中文版本是否正确翻译了论文标题
+        if "基于" in chinese_content or "变换器" in chinese_content or "异常检测" in chinese_content:
+            print("✅ 论文标题翻译正确")
+        else:
+            print("⚠️ 论文标题可能未正确翻译")
+            
+        # 检查研究者名字是否保持英文
+        if "Zhang Wei" in chinese_content and "Li Ming" in chinese_content:
+            print("✅ 研究者名字保持英文")
+        else:
+            print("⚠️ 研究者名字可能被翻译了")
+            
+        return True
+    else:
+        print(f"❌ 智能双语翻译测试失败: {smart_result.get('error')}")
+        return False
+
+
 def test_complex_content_translation():
     """测试复杂内容翻译"""
     print("\n🧪 测试4: 复杂内容翻译测试")
@@ -208,6 +275,7 @@ def run_all_tests():
         test_basic_connection,
         test_simple_translation,
         test_bilingual_translation,
+        test_smart_bilingual_translation,
         test_complex_content_translation,
         test_error_handling
     ]
