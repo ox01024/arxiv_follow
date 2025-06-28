@@ -38,7 +38,7 @@ jobs:
       uses: actions/checkout@v4
     
     - name: 🐍 设置 Python 环境
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v5
       with:
         python-version: '3.11'
     
@@ -50,6 +50,10 @@ jobs:
     - name: ⚡ 安装依赖
       run: |
         uv sync
+    
+    - name: 🧪 环境测试
+      run: |
+        uv run python test_ci.py
     
     - name: 🎯 运行主题论文搜索
       run: |
@@ -93,7 +97,7 @@ jobs:
         
     - name: 📝 上传运行日志
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: topic-logs-${{ github.run_number }}
         path: logs/
@@ -101,7 +105,7 @@ jobs:
         
     - name: 📄 上传搜索结果
       if: always()
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: topic-results-${{ github.run_number }}
         path: artifacts/

@@ -391,28 +391,37 @@ def display_researchers(researchers: List[Dict[str, Any]]) -> None:
 
 def main():
     """主函数"""
-    # Google Sheets TSV 导出链接
-    tsv_url = "https://docs.google.com/spreadsheets/d/1itjnV2U-Eh0F1T0LIGuLjzIhgL9f_OD8tbkMUG-Onic/export?format=tsv&id=1itjnV2U-Eh0F1T0LIGuLjzIhgL9f_OD8tbkMUG-Onic&gid=0"
-    
-    print("🔍 每日论文监控 - 获取研究者当天发布的论文")
-    print(f"时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
-    print(f"URL: {tsv_url}\n")
-    
-    # 获取研究者数据
-    researchers = fetch_researchers_from_tsv(tsv_url)
-    
-    # 显示研究者列表
-    display_researchers(researchers)
-    
-    if researchers:
-        # 获取所有研究者今天发布的论文
-        all_papers = get_today_papers_for_all_researchers(researchers)
+    try:
+        # Google Sheets TSV 导出链接
+        tsv_url = "https://docs.google.com/spreadsheets/d/1itjnV2U-Eh0F1T0LIGuLjzIhgL9f_OD8tbkMUG-Onic/export?format=tsv&id=1itjnV2U-Eh0F1T0LIGuLjzIhgL9f_OD8tbkMUG-Onic&gid=0"
         
-        # 显示论文结果
-        display_papers(all_papers)
+        print("🔍 每日论文监控 - 获取研究者当天发布的论文")
+        print(f"时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+        print(f"URL: {tsv_url}\n")
         
-        return researchers, all_papers
-    else:
+        # 获取研究者数据
+        researchers = fetch_researchers_from_tsv(tsv_url)
+        
+        # 显示研究者列表
+        display_researchers(researchers)
+        
+        if researchers:
+            # 获取所有研究者今天发布的论文
+            all_papers = get_today_papers_for_all_researchers(researchers)
+            
+            # 显示论文结果
+            display_papers(all_papers)
+            
+            print(f"\n✅ 监控完成 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            return researchers, all_papers
+        else:
+            print("⚠️ 未找到研究者数据，请检查数据源")
+            return [], {}
+    
+    except Exception as e:
+        print(f"❌ 程序执行出错: {e}")
+        import traceback
+        traceback.print_exc()
         return [], {}
 
 

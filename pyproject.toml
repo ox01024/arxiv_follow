@@ -1,9 +1,9 @@
 [project]
 name = "arxiv-follow"
 version = "0.1.0"
-description = "Add your description here"
+description = "ArXiv论文监控系统 - 支持研究者跟踪、主题订阅和定期报告"
 readme = "README.md"
-requires-python = ">=3.13"
+requires-python = ">=3.11"
 dependencies = [
     "httpx>=0.28.1",
 ]
