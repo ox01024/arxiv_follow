@@ -1,514 +1,466 @@
-# ArXiv 研究者动态监控系统
+# ArXiv Follow - 现代化论文监控系统
 
-这是一个自动化监控特定研究者在 arXiv 上发布论文的系统，支持每日研究者动态监控和周报汇总，以及基于交叉学科主题的智能搜索。**现已支持 AI 增强的智能论文分析和报告生成！**
+![Python](https://img.shields.io/badge/python-3.11+-blue.svg)
+![License](https://img.shields.io/badge/license-MIT-green.svg)
+![Build](https://img.shields.io/badge/build-passing-brightgreen.svg)
+![Version](https://img.shields.io/badge/version-1.0.0-orange.svg)
 
-## 🏗️ 项目架构
+> 🔬 **全新重构** - 采用现代化Python架构，提供强大的ArXiv论文监控和分析功能
 
-项目已重构为标准的Python包结构，提供更好的模块化和可维护性：
+## ✨ 主要特性
 
-```
-arxiv_follow/
-├── src/arxiv_follow/          # 主包源代码
-│   ├── core/                  # 核心业务逻辑
-│   │   ├── collector.py       # 论文收集器
-│   │   ├── analyzer.py        # 论文分析器
-│   │   └── monitor.py         # 智能监控
-│   ├── services/              # 服务层
-│   │   ├── translation.py     # 翻译服务
-│   │   └── researcher.py      # 研究者服务
-│   ├── integrations/          # 第三方集成
-│   │   └── dida.py           # 滴答清单集成
-│   ├── cli/                   # 命令行工具
-│   │   ├── daily.py          # 每日监控
-│   │   ├── weekly.py         # 每周汇总
-│   │   └── topic.py          # 主题搜索
-│   └── config/                # 配置模块
-│       └── settings.py       # 配置文件
-├── tests/                     # 测试文件
-├── examples/                  # 示例代码
-├── docs/                      # 文档
-└── pyproject.toml            # 项目配置
-```
-
-## 🚀 特别挑战
-
-> **"不写一行代码，构建一个项目，改掉喜欢自己写代码的坏毛病"**
-
-这个项目是一个有趣的实验——完全通过与 AI 助手对话的方式构建，作者没有亲自编写任何代码。完整的开发对话记录保存在 `vibe_coding/` 文件夹中，对想了解 AI 协作开发流程的开发者可能很有价值。
-
-## ✨ 功能特性
-
-### 🔍 基础监控功能
-- 📄 **每日研究者动态监控** - 自动检测特定研究者当天发布的新论文
-- 📚 **每周研究者动态汇总** - 生成特定研究者最近一周的论文报告  
-- 🎯 **交叉学科主题搜索** - 基于多个研究领域交集的智能论文搜索（AND逻辑）
-- 🧠 **智能日期回退** - 自动处理日期范围搜索无结果的情况
-
-### 🤖 AI 智能增强功能
-- 🔍 **智能内容采集** - 自动获取论文完整内容，包括摘要、章节、参考文献等
-- 🧠 **LLM深度分析** - 使用 Gemini 2.0 Flash Lite 进行重要性分析、技术分析和综合评估
-- 📊 **智能报告生成** - 自动生成结构化的分析报告和每日总结
-- 🌐 **双语支持** - 支持中英双语翻译，满足国际化需求
-
-### 🛠️ 集成和自动化
-- 🤖 **GitHub Actions自动化** - 定时执行，中国时区适配
-- 📝 **滴答清单集成** - 自动创建任务到你的滴答清单，支持智能任务增强
-- 🌏 **双语翻译服务** - 基于LLM的智能中英双语翻译
+- 🔍 **智能搜索引擎** - 支持关键词、作者、主题、跨领域等多种搜索模式
+- 📊 **类型安全** - 基于Pydantic的数据模型，确保数据验证和类型安全
+- ⚡ **异步架构** - 高性能并发处理，支持大规模数据采集
+- 🎨 **现代化CLI** - 基于Typer和Rich的美观命令行界面
+- 🧠 **AI增强分析** - 集成LLM进行智能论文分析和推荐
+- 🔌 **可扩展设计** - 模块化架构，支持自定义扩展
+- 📱 **多平台集成** - 支持滴答清单、翻译服务等第三方集成
 
 ## 🚀 快速开始
 
-### 环境准备
+### 安装
+
 ```bash
-# 安装 UV 包管理器
-curl -LsSf https://astral.sh/uv/install.sh | sh
+# 使用 uv（推荐）
+uv add arxiv-follow
 
-# 安装项目依赖
-uv sync
-
-# 安装为可编辑包（推荐）
-uv pip install -e .
-
-# 配置环境变量（可选，启用AI功能需要）
-export OPEN_ROUTE_API_KEY="your_openrouter_api_key"  # AI分析功能
-export DIDA_ACCESS_TOKEN="your_dida_access_token"    # 滴答清单集成
+# 或使用 pip
+pip install arxiv-follow
 ```
 
-### 使用方式
+### 基本使用
 
-#### 📟 命令行工具（推荐）
 ```bash
-# 安装后可直接使用命令行工具
-arxiv-daily      # 每日研究者动态监控
-arxiv-weekly     # 每周研究者动态汇总  
-arxiv-topic      # 交叉学科主题搜索
+# 搜索最近3天的AI论文
+arxiv-follow recent --days 3 --topics "cs.AI"
 
-# 自定义交叉学科搜索
-arxiv-topic "cs.AI,cs.LG"     # AI 与 机器学习 的交叉领域
-arxiv-topic "cs.CV,cs.RO"     # 计算机视觉 与 机器人学 的交叉领域
+# 按关键词搜索
+arxiv-follow search "machine learning"
+
+# 按作者搜索
+arxiv-follow authors "Yann LeCun,Geoffrey Hinton"
+
+# 跨领域搜索
+arxiv-follow topics "cs.AI,cs.CR" --days 7
+
+# 显示系统配置
+arxiv-follow config
+
+# 测试系统连接
+arxiv-follow test
 ```
 
-#### 🐍 作为Python模块
-```bash
-# 作为模块运行
-python -m arxiv_follow.cli.daily
-python -m arxiv_follow.cli.weekly
-python -m arxiv_follow.cli.topic "cs.AI,cs.CR"
-```
-
-#### 🔧 兼容性脚本（向后兼容）
-```bash
-# 这些脚本仍然有效
-python arxiv_daily.py
-python arxiv_weekly.py
-python arxiv_topic.py "cs.AI,cs.LG"
-
-# 或者使用uv
-uv run python arxiv_daily.py
-uv run python arxiv_weekly.py
-uv run python arxiv_topic.py
-```
-
-### 📚 作为库使用
+### Python API
 
 ```python
-# 导入核心组件
-from arxiv_follow import PaperCollector, PaperAnalyzer, TranslationService
-from arxiv_follow.core import IntelligentPaperMonitor
-from arxiv_follow.services import ResearcherService
-from arxiv_follow.integrations import DidaIntegration
+import arxiv_follow
 
-# 使用论文收集器
-collector = PaperCollector()
-paper_data = collector.collect_paper_content("2501.12345")
+# 快速搜索
+result = arxiv_follow.search("transformer", max_results=10)
+print(f"找到 {result['count']} 篇论文")
 
-# 使用论文分析器
-analyzer = PaperAnalyzer()
-analysis = analyzer.analyze_paper_significance(paper_data)
+# 获取最近论文
+papers = arxiv_follow.recent(days=3, topics=["cs.AI", "cs.LG"])
+for paper in papers['papers'][:5]:
+    print(f"- {paper['title']}")
 
-# 使用翻译服务
-translator = TranslationService()
-result = translator.translate_task_content("标题", "内容")
+# 使用完整API
+from arxiv_follow import SearchEngine, SearchQuery, SearchType
+import asyncio
 
-# 使用研究者服务
-researcher_service = ResearcherService()
-researchers = researcher_service.fetch_researchers_from_tsv(url)
+async def advanced_search():
+    config = arxiv_follow.load_config()
+    
+    query = SearchQuery(
+        query_id="my_search",
+        search_type=SearchType.HYBRID,
+        query_text="attention mechanism",
+        topics=["cs.AI"],
+        filters={"max_results": 20, "days_back": 7}
+    )
+    
+    async with SearchEngine(config) as engine:
+        result = await engine.search(query)
+        return result.papers
+
+papers = asyncio.run(advanced_search())
 ```
 
-## 🎯 演示和测试
+## 📖 详细文档
 
-### 🧪 运行演示
-```bash
-# 🧠 智能监控完整演示
-python examples/intelligent_monitor.py
+### 核心概念
 
-# 🌐 双语翻译功能演示
-python examples/bilingual_translation.py
+#### 1. 搜索引擎 (SearchEngine)
+统一的搜索接口，支持多种搜索策略：
+- **关键词搜索** - 在标题、摘要中搜索特定词汇
+- **作者搜索** - 按研究者姓名搜索论文
+- **主题搜索** - 按ArXiv分类搜索
+- **混合搜索** - 结合多种策略的智能搜索
 
-# 🔍 搜索功能演示
-python examples/search_demo.py
+#### 2. 数据模型
+基于Pydantic的类型安全模型：
+```python
+from arxiv_follow.models import Paper, SearchQuery, SearchFilters
+
+# 创建搜索查询
+query = SearchQuery(
+    query_id="search_001",
+    search_type="keyword",
+    query_text="neural networks",
+    filters=SearchFilters(
+        max_results=50,
+        days_back=7,
+        categories=["cs.AI", "cs.LG"]
+    )
+)
 ```
 
-### 🧪 运行测试
+#### 3. 异步收集器 (ArxivCollector)
+高性能的论文数据收集：
+```python
+from arxiv_follow import ArxivCollector
+import asyncio
 
-项目包含完整的测试套件，确保代码质量和功能正确性：
+async def collect_papers():
+    config = arxiv_follow.load_config()
+    
+    async with ArxivCollector(config) as collector:
+        # 搜索最近论文
+        result = await collector.search_recent_papers(
+            days_back=3,
+            categories=["cs.AI"],
+            max_results=20
+        )
 
-```bash
-# 使用测试运行器（推荐）
-python run_tests.py --mode unit          # 单元测试
-python run_tests.py --mode smoke         # 冒烟测试
-python run_tests.py --mode integration   # 集成测试（需要API密钥）
-python run_tests.py --mode all           # 所有测试
+        # 批量获取详情
+        papers = await collector.collect_papers_batch(
+            ["2501.01234", "2501.01235"],
+            include_content=True
+        )
+        
+        return papers
 
-# 生成覆盖率报告
-python run_tests.py --mode unit --coverage
-
-# 直接使用pytest
-pytest tests/                            # 运行所有测试
-pytest tests/test_core/                  # 运行核心模块测试
-pytest tests/ --cov=src/arxiv_follow     # 生成覆盖率报告
+papers = asyncio.run(collect_papers())
 ```
 
-**测试覆盖**:
-- ✅ 核心模块测试（论文收集器、分析器、智能监控）
-- ✅ 服务层测试（研究者服务、翻译服务）
-- ✅ 第三方集成测试（滴答清单API）
-- ✅ 配置模块测试
-- ✅ 自动化CI/CD测试
+### 配置系统
 
-查看 [TESTING.md](TESTING.md) 了解详细的测试指南。
-
-### 🔧 代码质量检查
+#### 环境变量配置
 ```bash
-# 代码格式化
-black src/ tests/
+# API配置
+export ARXIV_FOLLOW_API__OPENROUTER_API_KEY="your_key"
+export ARXIV_FOLLOW_API__DIDA_ACCESS_TOKEN="your_token"
 
-# 类型检查
-mypy src/
+# 功能开关
+export ARXIV_FOLLOW_INTEGRATIONS__AI_ANALYSIS_ENABLED=true
+export ARXIV_FOLLOW_INTEGRATIONS__DIDA_ENABLED=true
 
-# 代码规范检查
-flake8 src/ tests/
+# 监控配置
+export ARXIV_FOLLOW_MONITORING__DEFAULT_SEARCH_TOPICS="cs.AI,cs.CR"
+export ARXIV_FOLLOW_MONITORING__CHECK_INTERVAL_HOURS=6
 ```
 
-## 🚀 快速开始
+#### .env 文件
+```ini
+# .env
+ARXIV_FOLLOW_DEBUG=false
+ARXIV_FOLLOW_API__OPENROUTER_API_KEY=your_openrouter_key
+ARXIV_FOLLOW_API__DIDA_ACCESS_TOKEN=your_dida_token
+ARXIV_FOLLOW_INTEGRATIONS__AI_ANALYSIS_ENABLED=true
+ARXIV_FOLLOW_INTEGRATIONS__TRANSLATION_ENABLED=true
+ARXIV_FOLLOW_STORAGE__DATA_DIR=./data
+ARXIV_FOLLOW_STORAGE__OUTPUT_DIR=./reports
+```
 
-### 环境准备
+### CLI 命令详解
+
+#### 搜索命令
 ```bash
-# 安装 UV 包管理器
+# 基础搜索
+arxiv-follow search "attention mechanism" --max 20
+
+# 指定搜索类型
+arxiv-follow search "neural networks" --type keyword --days 7
+
+# 复杂过滤
+arxiv-follow search "transformer" \
+  --categories "cs.AI,cs.CL" \
+  --authors "Vaswani" \
+  --output results.json
+
+# 按作者搜索
+arxiv-follow authors "Geoffrey Hinton,Yann LeCun" --max 30
+
+# 跨领域主题搜索
+arxiv-follow topics "cs.AI,cs.CR" --days 14 --max 50
+```
+
+#### 监控命令
+```bash
+# 获取最近论文
+arxiv-follow recent --days 3 --topics "cs.AI,cs.LG"
+
+# 自定义主题监控
+arxiv-follow recent --days 7 \
+  --topics "cs.AI,cs.CR,cs.CV" \
+  --output weekly_report.json
+```
+
+#### 系统管理
+```bash
+# 查看配置
+arxiv-follow config
+
+# 查看敏感配置
+arxiv-follow config --show-sensitive
+
+# 测试系统连接
+arxiv-follow test
+```
+
+## 🏗️ 架构设计
+
+### 项目结构
+```
+src/arxiv_follow/
+├── models/           # 数据模型层
+│   ├── paper.py     # 论文相关模型
+│   ├── researcher.py # 研究者模型
+│   ├── search.py    # 搜索模型
+│   ├── task.py      # 任务模型
+│   └── config.py    # 配置模型
+├── core/            # 核心业务层
+│   ├── collector.py # 数据收集器
+│   ├── analyzer.py  # 分析器
+│   ├── monitor.py   # 监控器
+│   └── engine.py    # 搜索引擎
+├── services/        # 服务层
+│   ├── translation.py # 翻译服务
+│   └── researcher.py  # 研究者服务
+├── integrations/    # 集成层
+│   └── dida.py     # 滴答清单集成
+├── cli/             # 命令行接口
+│   └── main.py     # 主CLI应用
+└── config/          # 配置管理
+    └── settings.py  # 设置管理
+```
+
+### 技术栈
+
+- **数据验证**: Pydantic v2
+- **异步编程**: AsyncIO + httpx
+- **CLI框架**: Typer + Rich
+- **配置管理**: Pydantic Settings
+- **HTTP客户端**: httpx
+- **包管理**: uv
+
+## 🔧 开发指南
+
+### 开发环境设置
+
+```bash
+# 克隆项目
+git clone https://github.com/your-org/arxiv_follow.git
+cd arxiv_follow
+
+# 安装 uv (如果未安装)
 curl -LsSf https://astral.sh/uv/install.sh | sh
 
-# 安装项目依赖
-uv sync
+# 安装依赖
+uv sync --dev
 
-# 配置环境变量（可选，启用AI功能需要）
-export OPEN_ROUTE_API_KEY="your_openrouter_api_key"  # AI分析功能
-export DIDA_ACCESS_TOKEN="your_dida_access_token"    # 滴答清单集成
+# 激活虚拟环境
+source .venv/bin/activate  # Linux/Mac
+# 或
+.venv\Scripts\activate  # Windows
+
+# 运行测试
+uv run pytest
+
+# 运行类型检查
+uv run mypy src/
+
+# 运行代码格式化
+uv run black src/
+uv run isort src/
 ```
 
-### 立即体验
+### 扩展开发
 
-#### 基础监控功能
-```bash
-# 每日研究者动态监控
-uv run python daily_papers.py
-
-# 每周研究者动态汇总
-uv run python weekly_papers.py
-
-# 交叉学科主题搜索（预设：AI + 安全）
-uv run python topic_papers.py
-
-# 自定义交叉学科搜索
-uv run python topic_papers.py "cs.AI,cs.LG"     # AI 与 机器学习 的交叉领域
-uv run python topic_papers.py "cs.CV,cs.RO"     # 计算机视觉 与 机器人学 的交叉领域
-uv run python topic_papers.py "cs.CR,cs.DB"     # 密码学 与 数据库 的交叉领域
-```
-
-> 💡 **重要说明**: 多个主题使用 **AND逻辑**（交集），即搜索同时属于所有指定领域的论文，这是真正的**交叉学科研究**。例如 `cs.AI,cs.LG` 只会返回同时标记为AI和机器学习的论文。
-
-#### AI 智能功能演示
-```bash
-# 🧠 智能监控完整演示
-uv run python demo_intelligent_monitor.py
-
-# 🌐 双语翻译功能演示
-uv run python demo_bilingual_translation.py
-
-# 🧪 运行智能功能测试
-uv run python test_intelligent_monitor.py
-```
-
-## 📋 输出示例
-
-### 研究者动态监控输出
-```
-🔍 每日研究者动态监控 - 获取特定研究者当天发布的论文
-时间: 2025-06-28 09:00:00
-
-✅ 找到 1 篇新论文!
-👨‍🔬 Minghao Shao (1 篇论文):
-📄 QHackBench: Benchmarking Large Language Models...
-🔗 arXiv ID: 2506.20008
-🌐 链接: https://arxiv.org/abs/2506.20008
-```
-
-### 交叉学科主题搜索输出  
-```
-🎯 交叉学科主题搜索 - cs.AI ∩ cs.CR (AI与密码学交集)
-📅 搜索日期: 2025-01-15
-
-✅ 发现 3 篇交叉学科论文!
-📊 搜索结果: 3 篇符合 AI ∩ 密码学 条件的论文
-
-📄 1. Privacy-Preserving Federated Learning with Homomorphic Encryption
-🏷️ 学科标签: cs.AI, cs.CR, cs.LG
-🔗 https://arxiv.org/abs/2501.12345
-
-📄 2. Quantum-Safe Neural Network Training via Zero-Knowledge Proofs  
-🏷️ 学科标签: cs.AI, cs.CR
-🔗 https://arxiv.org/abs/2501.12346
-```
-
-### AI 增强版输出
-```
-🧠 每日研究者动态监控 (AI增强版) - 2025-06-28
-
-## 🧠 AI智能分析总结
-📅 **今日概览**
-- 论文数量: 1篇，主要研究领域：人工智能安全
-
-🔥 **热点趋势** 
-- 大模型安全性评估的新基准
-- 量子计算与AI安全的交叉研究
-
-💎 **精选推荐**
-- QHackBench: 推荐指数 8.5/10
-  创新点：首个针对量子黑客攻击的LLM基准测试
-
-📊 **论文详情**
-### 1. QHackBench: Benchmarking Large Language Models...
-**重要性分析**: 8.5/10 - 在AI安全领域具有重要意义
-**技术创新**: 提出了新的量子安全评估框架
-**应用前景**: 适用于金融、国防等高安全要求领域
-```
-
-## 🤖 自动化运行
-
-系统已配置 GitHub Actions 自动化工作流：
-
-- **每日研究者动态监控** - 每天 09:00/12:00/22:00 (中国时间)
-- **每周研究者动态汇总** - 每周一 09:00 (中国时间)  
-- **交叉学科主题搜索** - 每天 09:00 (中国时间)
-
-支持手动触发，可自定义搜索主题和时间范围。AI 功能可根据配置自动启用。
-
-> 📝 **搜索逻辑说明**: 主题搜索使用AND逻辑，多个主题间为交集关系，适合寻找真正的交叉学科研究。
-
-## 🧭 交叉学科搜索详解
-
-### 🎯 搜索逻辑说明
-
-**重要概念**: 本系统的主题搜索采用 **AND逻辑**（交集），而非OR逻辑（并集）。
-
-| 输入格式 | 搜索逻辑 | 结果说明 | 示例场景 |
-|---------|---------|---------|----------|
-| `cs.AI,cs.LG` | cs.AI **AND** cs.LG | 同时属于AI和机器学习的论文 | 深度学习、神经网络 |
-| `cs.CV,cs.RO` | cs.CV **AND** cs.RO | 同时属于计算机视觉和机器人的论文 | 视觉SLAM、机器人感知 |
-| `cs.CR,cs.DB` | cs.CR **AND** cs.DB | 同时属于密码学和数据库的论文 | 隐私保护数据库、加密查询 |
-| `cs.AI,cs.CR,cs.LG` | cs.AI **AND** cs.CR **AND** cs.LG | 同时属于AI、密码学、机器学习的论文 | 隐私保护机器学习 |
-
-### 🔍 热门交叉学科组合
-
-#### 🤖 AI相关交叉领域
-```bash
-# AI + 机器学习
-uv run python topic_papers.py "cs.AI,cs.LG"
-
-# AI + 计算机视觉  
-uv run python topic_papers.py "cs.AI,cs.CV"
-
-# AI + 网络安全
-uv run python topic_papers.py "cs.AI,cs.CR"
-
-# AI + 机器人学
-uv run python topic_papers.py "cs.AI,cs.RO"
-
-# AI + 人机交互
-uv run python topic_papers.py "cs.AI,cs.HC"
-```
-
-#### 🔒 安全相关交叉领域
-```bash
-# 网络安全 + 机器学习
-uv run python topic_papers.py "cs.CR,cs.LG"
-
-# 网络安全 + 数据库
-uv run python topic_papers.py "cs.CR,cs.DB"
-
-# 网络安全 + 网络通信
-uv run python topic_papers.py "cs.CR,cs.NI"
-```
-
-#### 🤖 机器人相关交叉领域
-```bash
-# 机器人学 + 计算机视觉
-uv run python topic_papers.py "cs.RO,cs.CV"
-
-# 机器人学 + 机器学习
-uv run python topic_papers.py "cs.RO,cs.LG"
-
-# 机器人学 + 人机交互
-uv run python topic_papers.py "cs.RO,cs.HC"
-```
-
-### ⚡ 为什么使用AND逻辑？
-
-1. **精准定位**: 找到真正的交叉学科研究，而非简单的领域聚合
-2. **减少噪音**: 避免单一领域论文的干扰
-3. **发现创新**: 交叉学科往往是技术突破的来源
-4. **研究价值**: 交叉研究通常具有更高的影响因子和创新性
-
-### 💡 使用建议
-
-- **新兴领域探索**: 尝试3个或更多主题的组合
-- **研究方向确定**: 使用2个主题快速定位感兴趣的交叉领域  
-- **文献调研**: 系统性搜索特定交叉领域的最新进展
-- **合作机会**: 发现可能的跨领域合作研究方向
-
-## 📚 完整文档中心
-
-### 🎯 按用户类型导航
-
-#### 🆕 新用户入门
-```
-1️⃣ 开始使用 → 上面的"🚀 快速开始"
-2️⃣ 深入了解 → 📖 详细使用指南
-3️⃣ 高级功能 → 🎯 主题搜索专题
-4️⃣ AI功能 → 🧠 智能监控指南
-```
-
-#### 👨‍💻 开发者部署
-```
-1️⃣ 本地测试 → 📖 详细使用指南
-2️⃣ 自动化部署 → 🚀 部署指南
-3️⃣ 任务管理 → 📝 滴答清单集成
-4️⃣ AI集成 → 🧠 智能监控指南
-```
-
-#### 🔬 研究者定制
-```
-1️⃣ 配置研究者 → 📖 详细使用指南 > 配置管理
-2️⃣ 主题订阅 → 🎯 主题搜索专题
-3️⃣ 自动化监控 → 🚀 部署指南
-4️⃣ AI论文分析 → 🧠 智能监控指南
-```
-
-### 📖 核心文档
-
-| 文档 | 内容概要 | 适合人群 | 预计阅读时间 |
-|------|----------|----------|--------------|
-| [📖 详细使用指南](docs/usage-guide.md) | 完整功能说明、配置管理、搜索技巧、故障排除 | 所有用户 | 15-20分钟 |
-| [🎯 主题搜索专题](docs/topic-search.md) | arXiv分类、智能搜索、热门组合、高级技巧 | 研究者/高级用户 | 10-15分钟 |
-| [🧠 智能监控指南](docs/intelligent-monitoring-guide.md) | AI论文采集、LLM分析、智能报告生成 | AI功能用户 | 12-18分钟 |
-| [🌐 双语翻译指南](docs/translation-guide.md) | 中英双语翻译配置、使用方法、最佳实践 | 国际化用户 | 8-12分钟 |
-| [📝 滴答清单集成](docs/dida-integration.md) | 5分钟快速配置、API详解、故障排除 | 想要任务管理的用户 | 8-12分钟 |
-| [🚀 部署指南](docs/deployment.md) | GitHub Actions配置、自动化部署、监控维护 | 开发者/运维人员 | 12-18分钟 |
-
-### 🔍 快速查找
-
-#### 📋 常见任务指南
-- **配置研究者监控** → [使用指南 > 研究者列表管理](docs/usage-guide.md#研究者列表管理)
-- **设置主题订阅** → [主题搜索专题 > 使用方法](docs/topic-search.md#🚀-使用方法)
-- **启用AI功能** → [智能监控指南 > 快速开始](docs/intelligent-monitoring-guide.md#🚀-快速开始)
-- **配置双语翻译** → [双语翻译指南 > 环境配置](docs/translation-guide.md#⚙️-环境配置)
-- **启用自动化** → [部署指南 > 配置步骤](docs/deployment.md#🔧-配置步骤)
-- **集成滴答清单** → [滴答清单集成 > 快速配置](docs/dida-integration.md#🚀-5分钟快速配置)
-
-#### 🆘 问题求解
-- **搜索无结果** → [使用指南 > 常见问题](docs/usage-guide.md#🚨-常见问题)
-- **AI功能问题** → [智能监控指南 > 故障排除](docs/intelligent-monitoring-guide.md#🔧-故障排除)
-- **翻译服务问题** → [双语翻译指南 > 故障排除](docs/translation-guide.md#🚨-故障排除)
-- **网络连接问题** → [使用指南 > 网络连接问题](docs/usage-guide.md#网络连接问题)
-- **滴答清单配置** → [滴答清单集成 > 故障排除](docs/dida-integration.md#🔍-故障排除)
-- **GitHub Actions失败** → [部署指南 > 监控调试](docs/deployment.md#🔍-监控和调试)
-
-### 📚 完整文档索引
-> 📁 **[查看所有文档](docs/README.md)** - 包含完整的文档目录和遗留版本
-
-## 🔧 配置说明
-
-### 研究者列表
-研究者列表存储在 [Google Sheets](https://docs.google.com/spreadsheets/d/1itjnV2U-Eh0F1T0LIGuLjzIhgL9f_OD8tbkMUG-Onic) 中，TSV格式，每行一个研究者姓名。
-
-### AI 智能功能配置
+#### 自定义搜索策略
 ```python
-# config.py 中的 PAPER_ANALYSIS_CONFIG
-PAPER_ANALYSIS_CONFIG = {
-    "enable_analysis": True,          # 启用LLM分析
-    "enable_content_collection": True, # 启用内容采集
-    "analysis_mode": "comprehensive", # 分析模式
-}
+from arxiv_follow.core.engine import SearchEngine
+from arxiv_follow.models import SearchQuery, SearchResult
+
+class CustomSearchEngine(SearchEngine):
+    
+    async def search_custom(self, query: SearchQuery) -> SearchResult:
+        """自定义搜索逻辑"""
+        # 实现你的搜索策略
+        pass
 ```
 
-### 滴答清单集成
-1. 获取 Access Token：使用 [在线工具](https://dida-auth.vercel.app/) 
-2. 配置 GitHub Secrets：`DIDA_ACCESS_TOKEN`
-3. 测试连接：`uv run python test_dida_integration.py`
+#### 添加新的集成
+```python
+from arxiv_follow.models.config import AppConfig
 
-## 🛠️ 项目结构
-
-```
-arxiv_follow/
-├── daily_papers.py              # 每日研究者动态监控脚本
-├── weekly_papers.py             # 每周研究者动态汇总脚本  
-├── topic_papers.py              # 交叉学科主题搜索脚本
-├── follow_researchers.py        # 研究者跟踪脚本
-├── dida_integration.py          # 滴答清单集成
-├── intelligent_monitor.py       # 🧠 智能监控集成
-├── paper_collector.py           # 🔍 论文内容采集
-├── paper_analyzer.py            # 🧠 LLM论文分析
-├── translation_service.py       # 🌐 双语翻译服务
-├── demo_*.py                    # 演示脚本
-├── test_*.py                    # 测试脚本
-├── config.py                    # 配置文件
-├── docs/                        # 详细文档
-└── .github/workflows/           # GitHub Actions配置
+class CustomIntegration:
+    
+    def __init__(self, config: AppConfig):
+        self.config = config
+    
+    async def process_papers(self, papers: list) -> dict:
+        """处理论文数据"""
+        # 实现你的集成逻辑
+        pass
 ```
 
-## 📊 监控范围
+## 📈 性能优化
 
-- **研究领域** - 计算机科学 + 物理学各分支
-- **搜索平台** - arXiv.org  
-- **时间筛选** - 基于论文提交日期
-- **智能特性** - 自动日期回退，确保搜索结果
-- **AI分析** - 重要性评估、技术分析、应用前景预测
+### 并发控制
+```python
+# 配置文件中设置并发参数
+ARXIV_FOLLOW_MAX_CONCURRENT_REQUESTS=10
+ARXIV_FOLLOW_REQUEST_DELAY_SECONDS=1.0
+```
 
-## 🎯 适用场景
+### 缓存策略
+```python
+# 启用缓存
+ARXIV_FOLLOW_STORAGE__ENABLE_CACHE=true
+ARXIV_FOLLOW_STORAGE__CACHE_TTL_SECONDS=3600
+ARXIV_FOLLOW_STORAGE__MAX_CACHE_SIZE_MB=500
+```
 
-### 研究者动态监控
-- 科研人员跟踪特定研究者的最新研究
-- 研究团队定期监控合作伙伴动态
-- 导师跟踪学生或同事的论文发表
-- 学术竞争对手动态分析
+### 大数据处理
+```python
+from arxiv_follow import ArxivCollector
 
-### 交叉学科研究发现
-- 发现真正的跨领域创新研究
-- 探索新兴交叉学科发展趋势
-- 寻找跨领域合作机会
-- 多学科背景的文献调研
+async def stream_large_dataset():
+    config = arxiv_follow.load_config()
+    
+    async with ArxivCollector(config) as collector:
+        async for batch in collector.stream_search_results(
+            query="cat:cs.AI",
+            batch_size=100,
+            max_total=10000
+        ):
+            # 处理批次数据
+            process_batch(batch)
+```
 
-### AI 智能增强
-- 论文质量和重要性自动评估
-- 研究趋势和热点自动识别
-- 技术创新点智能提取
-- 多语言学术交流支持
+## 🧪 测试
 
-## 💰 AI功能成本
+### 运行测试
+```bash
+# 运行所有测试
+uv run pytest
 
-使用 Gemini 2.0 Flash Lite 模型，成本极低：
-- **每篇论文分析**: ~$0.003
-- **每日5篇论文**: ~$0.45/月
-- **每日10篇论文**: ~$0.90/月
+# 运行特定测试
+uv run pytest tests/test_collector.py
+
+# 运行覆盖率测试
+uv run pytest --cov=src/arxiv_follow
+
+# 运行性能测试
+uv run pytest tests/test_performance.py -v
+```
+
+### 集成测试
+```bash
+# 测试真实API连接
+uv run python -m arxiv_follow.cli.main test
+
+# 烟雾测试
+uv run pytest tests/ -k smoke
+```
+
+## 🚀 部署
+
+### 生产环境配置
+```bash
+# 设置生产环境变量
+export ARXIV_FOLLOW_DEBUG=false
+export ARXIV_FOLLOW_LOG_LEVEL=INFO
+export ARXIV_FOLLOW_STORAGE__BACKEND=postgresql
+export ARXIV_FOLLOW_STORAGE__DATABASE_URL="postgresql://..."
+
+# 启动应用
+arxiv-follow config  # 验证配置
+arxiv-follow test    # 测试连接
+```
+
+### Docker 部署
+```dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+COPY . .
+
+RUN pip install uv
+RUN uv sync --no-dev
+
+ENTRYPOINT ["uv", "run", "arxiv-follow"]
+```
+
+## 📋 路线图
+
+### v1.1 计划功能
+- [ ] 实时监控仪表板
+- [ ] 论文推荐算法优化
+- [ ] 更多第三方集成
+- [ ] 分布式部署支持
+
+### v1.2 计划功能
+- [ ] 图形用户界面 (GUI)
+- [ ] 论文引用网络分析
+- [ ] 团队协作功能
+- [ ] 高级AI分析模型
+
+## 🤝 贡献指南
+
+我们欢迎所有形式的贡献！请查看 [CONTRIBUTING.md](CONTRIBUTING.md) 了解详细信息。
+
+### 贡献类型
+- 🐛 Bug 报告
+- ✨ 新功能建议
+- 📖 文档改进
+- 🧪 测试用例
+- 🔧 代码优化
+
+### 开发流程
+1. Fork 项目
+2. 创建功能分支 (`git checkout -b feature/amazing-feature`)
+3. 提交更改 (`git commit -m 'Add amazing feature'`)
+4. 推送到分支 (`git push origin feature/amazing-feature`)
+5. 创建 Pull Request
+
+## 📄 许可证
+
+本项目基于 MIT 许可证开源 - 查看 [LICENSE](LICENSE) 文件了解详情。
+
+## 📞 支持
+
+- 📧 邮箱: support@arxiv-follow.dev
+- 💬 讨论: [GitHub Discussions](https://github.com/your-org/arxiv_follow/discussions)
+- 🐛 问题: [GitHub Issues](https://github.com/your-org/arxiv_follow/issues)
+- 📖 文档: [完整文档](https://arxiv-follow.dev/docs)
+
+## 🙏 致谢
+
+感谢以下项目和社区的支持：
+- [ArXiv.org](https://arxiv.org/) - 提供优秀的学术论文平台
+- [Pydantic](https://pydantic.dev/) - 强大的数据验证库
+- [Typer](https://typer.tiangolo.com/) - 现代化CLI框架
+- [Rich](https://rich.readthedocs.io/) - 美观的终端输出
 
 ---
 
-**⭐ 如果这个项目对你有帮助，请给个Star支持！**
+<div align="center">
+
+**ArXiv Follow** - 让学术研究更高效 🚀
+
+[官网](https://arxiv-follow.dev) • [文档](https://docs.arxiv-follow.dev) • [社区](https://community.arxiv-follow.dev)
+
+</div>

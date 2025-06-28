@@ -1,15 +1,17 @@
 """
-核心业务逻辑模块
+ArXiv Follow 核心业务层
 
-包含论文收集、分析和智能监控的核心功能。
+包含论文收集、分析、监控等核心功能。
 """
 
-from .collector import PaperCollector
 from .analyzer import PaperAnalyzer
-from .monitor import IntelligentPaperMonitor
+from .collector import ArxivCollector
+from .engine import SearchEngine
+from .monitor import PaperMonitor
 
 __all__ = [
-    "PaperCollector",
-    "PaperAnalyzer", 
-    "IntelligentPaperMonitor",
-] 
+    "ArxivCollector",
+    "PaperAnalyzer",
+    "PaperMonitor",
+    "SearchEngine",
+]

@@ -1,160 +1,357 @@
 #!/usr/bin/env python3
 """
-智能论文监控模块 - 集成论文采集、LLM分析和报告生成
+现代化论文监控模块
+
+提供智能的论文监控、分析和报告生成功能。
 """
 
+import asyncio
 import logging
 from typing import Dict, Any, List, Optional
-from datetime import datetime
-import time
+from datetime import datetime, timedelta
 
-# 导入各个模块
-try:
-    from .collector import PaperCollector
-    from .analyzer import PaperAnalyzer
-    from ..integrations.dida import create_arxiv_task
-    from ..config.settings import PAPER_ANALYSIS_CONFIG, DIDA_API_CONFIG
-except ImportError as e:
-    print(f"⚠️ 无法导入必要模块: {e}")
+from ..models import Paper, SearchQuery, SearchResult, SearchType, SearchFilters, Task, TaskType, TaskStatus
+from ..models.config import AppConfig
+from .collector import ArxivCollector
+from .analyzer import PaperAnalyzer
+from .engine import SearchEngine
 
-# 配置日志
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class IntelligentPaperMonitor:
-    """智能论文监控器 - 集成采集、分析和报告功能"""
+class PaperMonitor:
+    """现代化论文监控器"""
     
-    def __init__(self):
-        """初始化智能监控器"""
-        self.config = PAPER_ANALYSIS_CONFIG
-        self.collector = PaperCollector() if self.config.get('enable_content_collection') else None
-        self.analyzer = PaperAnalyzer() if self.config.get('enable_analysis') else None
+    def __init__(self, config: AppConfig):
+        """初始化监控器"""
+        self.config = config
+        self.collector = ArxivCollector(config)
+        self.analyzer = PaperAnalyzer(config) if config.is_feature_enabled("ai_analysis") else None
+        self.engine = SearchEngine(config)
         
-        logger.info(f"智能监控器初始化完成")
-        logger.info(f"内容采集: {'启用' if self.collector else '禁用'}")
-        logger.info(f"LLM分析: {'启用' if self.analyzer and self.analyzer.is_enabled() else '禁用'}")
+        logger.info("论文监控器初始化完成")
+        logger.info(f"AI分析: {'启用' if self.analyzer else '禁用'}")
     
-    def is_analysis_enabled(self) -> bool:
-        """检查分析功能是否启用"""
-        return (self.config.get('enable_analysis', False) and 
-                self.analyzer and 
-                self.analyzer.is_enabled())
+    async def __aenter__(self):
+        """异步上下文管理器入口"""
+        await self.collector.__aenter__()
+        await self.engine.__aenter__()
+        return self
     
-    def is_collection_enabled(self) -> bool:
-        """检查采集功能是否启用"""
-        return self.config.get('enable_content_collection', False) and self.collector
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """异步上下文管理器出口"""
+        await self.collector.__aexit__(exc_type, exc_val, exc_tb)
+        await self.engine.__aexit__(exc_type, exc_val, exc_tb)
     
-    def create_intelligent_dida_task(self, 
-                                   report_type: str,
-                                   title: str, 
-                                   papers: List[Dict[str, Any]],
-                                   error: str = None) -> Dict[str, Any]:
-        """
-        创建增强的滴答清单任务
-        
-        Args:
-            report_type: 报告类型
-            title: 任务标题
-            papers: 论文列表
-            error: 错误信息
-            
-        Returns:
-            任务创建结果
-        """
-        if error or not papers:
-            # 如果有错误或没有论文，使用原始的任务创建方式
-            return create_arxiv_task(report_type, "无论文发现", "", 0)
-        
-        logger.info(f"开始智能处理 {len(papers)} 篇论文")
-        
-        # 生成增强的报告内容
-        enhanced_content = self.generate_enhanced_content(papers)
-        
-        # 更新标题（如果启用了分析）
-        enhanced_title = title
-        if self.is_analysis_enabled():
-            enhanced_title = f"🧠 {title} (AI增强版)"
-        
-        # 创建任务
-        bilingual = DIDA_API_CONFIG.get('enable_bilingual', False)
-        
-        result = create_arxiv_task(
-            report_type=report_type,
-            summary=enhanced_title,
-            details=enhanced_content,
-            paper_count=len(papers),
-            bilingual=bilingual
+    async def monitor_researchers(self, researchers: List[str], days_back: int = 1) -> SearchResult:
+        """监控研究者的新论文"""
+        query = SearchQuery(
+            query_id=f"researchers_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            search_type=SearchType.RESEARCHER,
+            query_text=f"监控 {len(researchers)} 位研究者",
+            researchers=researchers,
+            filters=SearchFilters(
+                days_back=days_back,
+                max_results=100
+            )
         )
         
-        # 添加智能处理信息
-        if result.get('success'):
-            result['intelligent_features'] = {
-                'content_collection': self.is_collection_enabled(),
-                'llm_analysis': self.is_analysis_enabled()
-            }
+        result = await self.engine.search(query)
+        
+        if result.success and self.analyzer:
+            # 对结果进行AI分析
+            analyzed_papers = []
+            for paper_data in result.papers:
+                try:
+                    analysis = await self.analyzer.analyze_paper_significance(paper_data)
+                    paper_data['ai_analysis'] = analysis
+                    analyzed_papers.append(paper_data)
+                except Exception as e:
+                    logger.warning(f"分析论文失败: {e}")
+                    analyzed_papers.append(paper_data)
+            
+            result.papers = analyzed_papers
         
         return result
     
-    def generate_enhanced_content(self, papers: List[Dict[str, Any]]) -> str:
-        """
-        生成增强的报告内容
+    async def monitor_topics(self, topics: List[str], days_back: int = 1) -> SearchResult:
+        """监控主题的新论文"""
+        query = SearchQuery(
+            query_id=f"topics_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            search_type=SearchType.TOPIC,
+            query_text=f"监控主题: {', '.join(topics)}",
+            topics=topics,
+            filters=SearchFilters(
+                days_back=days_back,
+                max_results=100
+            )
+        )
         
-        Args:
-            papers: 论文列表
-            
-        Returns:
-            增强的报告内容
-        """
-        content_parts = []
+        result = await self.engine.search(query)
         
-        # 基础论文信息
-        content_parts.append("## 📄 论文详情")
+        if result.success and self.analyzer:
+            # 按重要性排序
+            scored_papers = []
+            for paper_data in result.papers:
+                try:
+                    analysis = await self.analyzer.analyze_paper_significance(paper_data)
+                    paper_data['ai_analysis'] = analysis
+                    paper_data['importance_score'] = analysis.get('importance_score', 5.0)
+                    scored_papers.append(paper_data)
+                except Exception as e:
+                    logger.warning(f"分析论文失败: {e}")
+                    paper_data['importance_score'] = 5.0
+                    scored_papers.append(paper_data)
+            
+            # 按重要性评分排序
+            scored_papers.sort(key=lambda x: x.get('importance_score', 5.0), reverse=True)
+            result.papers = scored_papers
         
-        for i, paper in enumerate(papers, 1):
-            title = paper.get('title', '未知标题')
-            authors = paper.get('authors', [])
-            arxiv_id = paper.get('arxiv_id', '')
-            abstract = paper.get('abstract', '')
-            
-            content_parts.append(f"\n### {i}. {title}")
-            
-            if authors:
-                content_parts.append(f"**作者**: {', '.join(authors[:3])}")
-                if len(authors) > 3:
-                    content_parts.append(f" 等 {len(authors)} 人")
-            
-            if arxiv_id:
-                content_parts.append(f"**arXiv ID**: {arxiv_id}")
-                content_parts.append(f"**链接**: https://arxiv.org/abs/{arxiv_id}")
-            
-            if abstract:
-                content_parts.append(f"**摘要**: {abstract}")
-            
-            content_parts.append("\n" + "-"*30)
+        return result
+    
+    async def daily_monitor(self, 
+                          researchers: Optional[List[str]] = None,
+                          topics: Optional[List[str]] = None) -> Dict[str, Any]:
+        """每日监控"""
+        results = {
+            'timestamp': datetime.now().isoformat(),
+            'date': datetime.now().strftime('%Y-%m-%d'),
+            'researcher_results': None,
+            'topic_results': None,
+            'summary': {},
+            'success': True
+        }
         
-        # 统计信息
-        content_parts.append(f"\n## 📊 统计信息")
-        content_parts.append(f"- 发现论文数: {len(papers)}")
-        content_parts.append(f"- 生成时间: {datetime.now().isoformat()}")
-        content_parts.append(f"\n🤖 *由 ArXiv Follow 智能监控系统生成*")
+        try:
+            # 监控研究者
+            if researchers:
+                logger.info(f"开始监控 {len(researchers)} 位研究者")
+                results['researcher_results'] = await self.monitor_researchers(researchers, days_back=1)
+            
+            # 监控主题
+            if topics:
+                logger.info(f"开始监控主题: {', '.join(topics)}")
+                results['topic_results'] = await self.monitor_topics(topics, days_back=1)
+            
+            # 生成摘要
+            results['summary'] = self._generate_daily_summary(results)
+            
+            logger.info("每日监控完成")
+            
+        except Exception as e:
+            logger.error(f"每日监控失败: {e}")
+            results['success'] = False
+            results['error'] = str(e)
         
-        return '\n'.join(content_parts)
+        return results
+    
+    async def weekly_monitor(self,
+                           researchers: Optional[List[str]] = None,
+                           topics: Optional[List[str]] = None) -> Dict[str, Any]:
+        """每周监控"""
+        results = {
+            'timestamp': datetime.now().isoformat(),
+            'week_start': (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d'),
+            'week_end': datetime.now().strftime('%Y-%m-%d'),
+            'researcher_results': None,
+            'topic_results': None,
+            'summary': {},
+            'success': True
+        }
+        
+        try:
+            # 监控研究者（过去7天）
+            if researchers:
+                logger.info(f"开始每周监控 {len(researchers)} 位研究者")
+                results['researcher_results'] = await self.monitor_researchers(researchers, days_back=7)
+            
+            # 监控主题（过去7天）
+            if topics:
+                logger.info(f"开始每周监控主题: {', '.join(topics)}")
+                results['topic_results'] = await self.monitor_topics(topics, days_back=7)
+            
+            # 生成摘要
+            results['summary'] = self._generate_weekly_summary(results)
+            
+            logger.info("每周监控完成")
+            
+        except Exception as e:
+            logger.error(f"每周监控失败: {e}")
+            results['success'] = False
+            results['error'] = str(e)
+        
+        return results
+    
+    def _generate_daily_summary(self, results: Dict[str, Any]) -> Dict[str, Any]:
+        """生成每日摘要"""
+        summary = {
+            'total_papers': 0,
+            'researcher_papers': 0,
+            'topic_papers': 0,
+            'top_papers': [],
+            'ai_insights': None
+        }
+        
+        # 统计研究者论文
+        if results['researcher_results'] and results['researcher_results'].success:
+            summary['researcher_papers'] = len(results['researcher_results'].papers)
+            summary['total_papers'] += summary['researcher_papers']
+        
+        # 统计主题论文
+        if results['topic_results'] and results['topic_results'].success:
+            summary['topic_papers'] = len(results['topic_results'].papers)
+            summary['total_papers'] += summary['topic_papers']
+        
+        # 收集所有论文并按重要性排序
+        all_papers = []
+        
+        if results['researcher_results'] and results['researcher_results'].success:
+            all_papers.extend(results['researcher_results'].papers)
+        
+        if results['topic_results'] and results['topic_results'].success:
+            all_papers.extend(results['topic_results'].papers)
+        
+        # 去重并按重要性排序
+        unique_papers = {p.get('arxiv_id'): p for p in all_papers if p.get('arxiv_id')}.values()
+        sorted_papers = sorted(unique_papers, 
+                             key=lambda x: x.get('importance_score', 5.0), 
+                             reverse=True)
+        
+        # 选取前5篇论文
+        summary['top_papers'] = list(sorted_papers)[:5]
+        
+        # 生成AI洞察（如果启用）
+        if self.analyzer and summary['top_papers']:
+            try:
+                summary['ai_insights'] = self._generate_ai_insights(summary['top_papers'])
+            except Exception as e:
+                logger.warning(f"生成AI洞察失败: {e}")
+        
+        return summary
+    
+    def _generate_weekly_summary(self, results: Dict[str, Any]) -> Dict[str, Any]:
+        """生成每周摘要"""
+        summary = self._generate_daily_summary(results)  # 复用每日摘要逻辑
+        
+        # 添加周报特有的统计
+        summary['weekly_trends'] = self._analyze_weekly_trends(results)
+        
+        return summary
+    
+    def _analyze_weekly_trends(self, results: Dict[str, Any]) -> Dict[str, Any]:
+        """分析每周趋势"""
+        trends = {
+            'hot_topics': [],
+            'productive_researchers': [],
+            'research_directions': []
+        }
+        
+        # 分析热门主题
+        all_papers = []
+        if results['topic_results'] and results['topic_results'].success:
+            all_papers.extend(results['topic_results'].papers)
+        
+        if all_papers:
+            # 统计分类频次
+            category_counts = {}
+            for paper in all_papers:
+                categories = paper.get('categories', [])
+                for cat in categories:
+                    category_counts[cat] = category_counts.get(cat, 0) + 1
+            
+            # 获取前5个热门分类
+            hot_categories = sorted(category_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+            trends['hot_topics'] = [{'category': cat, 'count': count} for cat, count in hot_categories]
+        
+        # 分析高产研究者
+        if results['researcher_results'] and results['researcher_results'].success:
+            author_counts = {}
+            for paper in results['researcher_results'].papers:
+                authors = paper.get('authors', [])
+                for author in authors:
+                    author_counts[author] = author_counts.get(author, 0) + 1
+            
+            productive_authors = sorted(author_counts.items(), key=lambda x: x[1], reverse=True)[:5]
+            trends['productive_researchers'] = [{'name': name, 'papers': count} for name, count in productive_authors]
+        
+        return trends
+    
+    def _generate_ai_insights(self, papers: List[Dict[str, Any]]) -> Dict[str, Any]:
+        """生成AI洞察"""
+        insights = {
+            'summary': "",
+            'key_trends': [],
+            'recommendations': [],
+            'innovation_level': 0.0
+        }
+        
+        if not papers:
+            return insights
+        
+        # 分析创新水平
+        scores = [p.get('importance_score', 5.0) for p in papers if p.get('importance_score')]
+        if scores:
+            insights['innovation_level'] = sum(scores) / len(scores)
+        
+        # 提取关键趋势
+        all_categories = []
+        for paper in papers:
+            all_categories.extend(paper.get('categories', []))
+        
+        category_freq = {}
+        for cat in all_categories:
+            category_freq[cat] = category_freq.get(cat, 0) + 1
+        
+        insights['key_trends'] = [cat for cat, _ in sorted(category_freq.items(), 
+                                                          key=lambda x: x[1], 
+                                                          reverse=True)[:3]]
+        
+        # 生成摘要
+        insights['summary'] = f"发现 {len(papers)} 篇高质量论文，平均重要性评分 {insights['innovation_level']:.1f}/10"
+        
+        # 生成建议
+        if insights['innovation_level'] > 7.0:
+            insights['recommendations'].append("发现多篇高影响力论文，建议深入研读")
+        if len(insights['key_trends']) > 1:
+            insights['recommendations'].append("注意跨领域研究趋势")
+        
+        return insights
+    
+    async def create_monitoring_task(self, 
+                                   task_type: TaskType,
+                                   parameters: Dict[str, Any]) -> Task:
+        """创建监控任务"""
+        from ..models import Task, TaskStatus, TaskPriority
+        
+        task = Task(
+            task_id=f"{task_type.value}_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+            task_type=task_type,
+            title=f"论文监控任务 - {task_type.value}",
+            description=f"自动监控任务，参数: {parameters}",
+            status=TaskStatus.PENDING,
+            priority=TaskPriority.NORMAL,
+            parameters=parameters
+        )
+        
+        return task
 
 
-def create_intelligent_monitor() -> IntelligentPaperMonitor:
+def create_paper_monitor(config: AppConfig) -> PaperMonitor:
     """
-    创建智能监控器实例
+    创建论文监控器实例
+    
+    Args:
+        config: 应用程序配置
     
     Returns:
-        智能监控器实例
+        论文监控器实例
     """
-    return IntelligentPaperMonitor()
+    return PaperMonitor(config)
 
 
 if __name__ == "__main__":
     # 测试代码
-    print("🧪 测试智能论文监控功能")
+    print("🧪 测试论文监控功能")
     
     # 示例论文数据
     test_papers = [
@@ -167,17 +364,21 @@ if __name__ == "__main__":
         }
     ]
     
-    monitor = create_intelligent_monitor()
+    monitor = create_paper_monitor(AppConfig())
     
-    print(f"内容采集: {'启用' if monitor.is_collection_enabled() else '禁用'}")
-    print(f"LLM分析: {'启用' if monitor.is_analysis_enabled() else '禁用'}")
+    print(f"AI分析: {'启用' if monitor.analyzer else '禁用'}")
+    
+    # 测试每日监控
+    result = monitor.daily_monitor(researchers=["Zhang Wei"], topics=["Deep Learning"])
+    
+    print(f"\n✅ 测试完成，每日监控结果: {result}")
+    
+    # 测试每周监控
+    result = monitor.weekly_monitor(researchers=["Zhang Wei"], topics=["Deep Learning"])
+    
+    print(f"\n✅ 测试完成，每周监控结果: {result}")
     
     # 测试任务创建
-    result = monitor.create_intelligent_dida_task(
-        report_type="daily",
-        title="每日论文监控",
-        papers=test_papers
-    )
+    task = monitor.create_monitoring_task(TaskType.DAILY_MONITOR, {"researchers": ["Zhang Wei"], "topics": ["Deep Learning"]})
     
-    print(f"\n✅ 测试完成，任务创建: {'成功' if result.get('success') else '失败'}")
-    print(f"智能功能: {result.get('intelligent_features', {})}") 
+    print(f"\n✅ 测试完成，任务创建: {task}") 

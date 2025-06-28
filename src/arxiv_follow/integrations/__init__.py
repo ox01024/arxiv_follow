@@ -8,4 +8,4 @@ from .dida import DidaIntegration
 
 __all__ = [
     "DidaIntegration",
-] 
+]

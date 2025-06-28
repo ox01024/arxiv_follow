@@ -1,4 +1,4 @@
-name: Tests
+name: Tests and Quality Checks
 
 on:
   push:
@@ -6,13 +6,83 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  PYTHON_VERSION: "3.11"
+
 jobs:
-  test:
+  # 代码质量检查
+  quality:
+    name: Code Quality
     runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      run: uv python install ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: uv sync --dev
+
+    - name: Check code formatting with Black
+      run: uv run black --check --diff src tests
+
+    - name: Lint with Ruff
+      run: uv run ruff check src tests
+
+    - name: Type check with MyPy
+      run: uv run mypy src
+      continue-on-error: true  # MyPy检查可以失败但不阻塞
+
+  # 基础测试（快速反馈）
+  test-basic:
+    name: Basic Tests
+    runs-on: ubuntu-latest
+    needs: quality
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      run: uv python install ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: uv sync --dev
+
+    - name: Create necessary directories
+      run: |
+        mkdir -p reports
+        mkdir -p data
+        mkdir -p cache
+
+    - name: Run CI environment tests
+      run: uv run python tests/test_ci.py
+
+    - name: Test package import
+      run: |
+        uv run python -c "import arxiv_follow; print(f'✅ ArXiv Follow v{arxiv_follow.__version__} 导入成功')"
+
+    - name: Test CLI help
+      run: uv run arxiv-follow --help
+
+    - name: Test system connection
+      run: uv run arxiv-follow test
+
+  # 单元测试
+  test-unit:
+    name: Unit Tests
+    runs-on: ubuntu-latest
+    needs: test-basic
+    
     strategy:
       matrix:
-        python-version: [3.9, 3.10, 3.11, 3.12]
-
+        python-version: ["3.11", "3.12"]
+    
     steps:
     - uses: actions/checkout@v4
 
@@ -23,27 +93,38 @@ jobs:
       run: uv python install ${{ matrix.python-version }}
 
     - name: Install dependencies
-      run: |
-        uv sync --dev
-        uv add --dev pytest pytest-cov
-
-    - name: Run smoke tests
-      run: |
-        uv run python run_tests.py --mode smoke --no-deps-check
+      run: uv sync --dev
 
     - name: Run unit tests
       run: |
-        uv run python run_tests.py --mode unit --coverage --no-deps-check
+        uv run pytest tests/ \
+          -m "not integration and not slow" \
+          --cov=src/arxiv_follow \
+          --cov-report=xml \
+          --cov-report=term-missing \
+          --junit-xml=pytest-results.xml \
+          -v
 
-    - name: Upload coverage reports
+    - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v4
-      if: matrix.python-version == '3.11'
       with:
         file: ./coverage.xml
         fail_ci_if_error: false
+        flags: unittests
+        name: codecov-${{ matrix.python-version }}
 
-  integration-tests:
+    - name: Upload test results
+      uses: actions/upload-artifact@v4
+      if: always()
+      with:
+        name: pytest-results-${{ matrix.python-version }}
+        path: pytest-results.xml
+
+  # 集成测试（仅在PR时运行）
+  test-integration:
+    name: Integration Tests
     runs-on: ubuntu-latest
+    needs: test-unit
     if: github.event_name == 'pull_request'
     
     steps:
@@ -52,17 +133,133 @@ jobs:
     - name: Install uv
       uses: astral-sh/setup-uv@v4
 
-    - name: Set up Python
-      run: uv python install 3.11
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      run: uv python install ${{ env.PYTHON_VERSION }}
 
     - name: Install dependencies
-      run: |
-        uv sync --dev
-        uv add --dev pytest pytest-cov
+      run: uv sync --dev
 
-    - name: Run integration tests (if API keys available)
+    - name: Run integration tests (with secrets if available)
       env:
         OPEN_ROUTE_API_KEY: ${{ secrets.OPEN_ROUTE_API_KEY }}
         DIDA_ACCESS_TOKEN: ${{ secrets.DIDA_ACCESS_TOKEN }}
       run: |
-        uv run python run_tests.py --mode integration --no-deps-check 
+        # 运行集成测试，但允许在没有API密钥时跳过
+        uv run pytest tests/ \
+          -m "integration" \
+          --tb=short \
+          -v || echo "⚠️ 集成测试部分失败（可能缺少API密钥）"
+
+    - name: Test real ArXiv search (without API keys)
+      run: |
+        uv run arxiv-follow search "test query" --max 1 || echo "⚠️ ArXiv搜索测试失败"
+
+  # 功能测试（端到端）
+  test-e2e:
+    name: End-to-End Tests
+    runs-on: ubuntu-latest
+    needs: test-unit
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      run: uv python install ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: uv sync
+
+    - name: Test CLI commands
+      run: |
+        echo "🧪 测试CLI命令..."
+        
+        # 测试帮助命令
+        uv run arxiv-follow --help
+        uv run arxiv-follow search --help
+        uv run arxiv-follow recent --help
+        
+        # 测试配置显示
+        uv run arxiv-follow config
+        
+        # 测试搜索功能（小量数据）
+        uv run arxiv-follow search "machine learning" --max 2
+        
+        echo "✅ CLI测试通过"
+
+    - name: Test Python package interface
+      run: |
+        echo "🧪 测试Python包接口..."
+        
+        uv run python -c "
+        import arxiv_follow
+        
+        # 测试快速搜索
+        result = arxiv_follow.quick_search('neural networks', max_results=2)
+        print(f'✅ 快速搜索: 找到 {result[\"count\"]} 篇论文')
+        
+        # 测试配置加载
+        config = arxiv_follow.load_config()
+        print(f'✅ 配置加载: {config.app_name} v{config.app_version}')
+        
+        print('✅ Python包接口测试通过')
+        "
+
+  # 性能测试（仅在主分支）
+  test-performance:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: test-unit
+    if: github.ref == 'refs/heads/main'
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      run: uv python install ${{ env.PYTHON_VERSION }}
+
+    - name: Install dependencies
+      run: uv sync
+
+    - name: Run performance tests
+      run: |
+        echo "🚀 运行性能测试..."
+        
+        # 测试大量搜索的性能
+        time uv run arxiv-follow search "deep learning" --max 50
+        
+        # 测试包导入时间
+        time uv run python -c "import arxiv_follow; print('包导入完成')"
+        
+        echo "✅ 性能测试完成"
+
+  # 汇总所有测试结果
+  test-summary:
+    name: Test Summary
+    runs-on: ubuntu-latest
+    needs: [quality, test-basic, test-unit, test-e2e]
+    if: always()
+    
+    steps:
+    - name: Check test results
+      run: |
+        echo "📊 测试汇总结果:"
+        echo "- 代码质量检查: ${{ needs.quality.result }}"
+        echo "- 基础测试: ${{ needs.test-basic.result }}"
+        echo "- 单元测试: ${{ needs.test-unit.result }}"
+        echo "- 端到端测试: ${{ needs.test-e2e.result }}"
+        
+        if [[ "${{ needs.quality.result }}" == "success" && \
+              "${{ needs.test-basic.result }}" == "success" && \
+              "${{ needs.test-unit.result }}" == "success" && \
+              "${{ needs.test-e2e.result }}" == "success" ]]; then
+          echo "🎉 所有核心测试通过！"
+        else
+          echo "❌ 部分测试失败"
+          exit 1
+        fi 

@@ -1,0 +1,133 @@
+# Pre-commit hooks configuration
+# 安装: pre-commit install
+# 运行: pre-commit run --all-files
+# 更新: pre-commit autoupdate
+
+repos:
+  # 基础检查
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.5.0
+    hooks:
+      - id: trailing-whitespace
+        name: 去除行尾空格
+      - id: end-of-file-fixer
+        name: 确保文件以换行符结尾
+      - id: check-yaml
+        name: 检查YAML语法
+      - id: check-toml
+        name: 检查TOML语法
+      - id: check-json
+        name: 检查JSON语法
+      - id: check-added-large-files
+        name: 检查大文件
+        args: ['--maxkb=1000']
+      - id: check-merge-conflict
+        name: 检查合并冲突标记
+      - id: debug-statements
+        name: 检查调试语句
+
+  # Python代码格式化
+  - repo: https://github.com/psf/black
+    rev: 24.12.0
+    hooks:
+      - id: black
+        name: Black 代码格式化
+        language_version: python3.11
+        args: [--line-length=88]
+
+  # Python导入排序
+  - repo: https://github.com/pycqa/isort
+    rev: 5.13.2
+    hooks:
+      - id: isort
+        name: isort 导入排序
+        args: [--profile=black, --line-length=88]
+
+  # Python代码检查
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.8.4
+    hooks:
+      - id: ruff
+        name: Ruff 代码检查
+        args: [--fix, --exit-non-zero-on-fix]
+      - id: ruff-format
+        name: Ruff 代码格式化
+
+  # 类型检查
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v1.14.0
+    hooks:
+      - id: mypy
+        name: MyPy 类型检查
+        additional_dependencies: [types-all]
+        args: [--ignore-missing-imports, --no-strict-optional]
+        exclude: ^(tests/|docs/|scripts/)
+
+  # 安全检查
+  - repo: https://github.com/PyCQA/bandit
+    rev: 1.8.0
+    hooks:
+      - id: bandit
+        name: Bandit 安全检查
+        args: [-c, pyproject.toml]
+        additional_dependencies: ["bandit[toml]"]
+        exclude: ^tests/
+
+  # 文档字符串检查
+  - repo: https://github.com/pycqa/pydocstyle
+    rev: 6.3.0
+    hooks:
+      - id: pydocstyle
+        name: pydocstyle 文档字符串检查
+        args: [--convention=google]
+        exclude: ^(tests/|docs/|scripts/)
+
+  # 复杂度检查
+  - repo: https://github.com/xenon-profiler/xenon
+    rev: 0.9.1
+    hooks:
+      - id: xenon
+        name: Xenon 复杂度检查
+        args: [--max-average=A, --max-modules=B, --max-absolute=B]
+        exclude: ^(tests/|docs/|scripts/)
+
+  # 测试
+  - repo: local
+    hooks:
+      - id: pytest-check
+        name: pytest 快速测试
+        entry: uv run pytest
+        language: system
+        args: [tests/, -x, -q, --tb=short]
+        pass_filenames: false
+        always_run: true
+
+  # 许可证头检查
+  - repo: https://github.com/Lucas-C/pre-commit-hooks
+    rev: v1.5.4
+    hooks:
+      - id: insert-license
+        name: 插入许可证头
+        files: \.py$
+        args:
+          - --license-filepath
+          - LICENSE_HEADER.txt
+          - --comment-style
+          - '#'
+        exclude: ^(tests/|docs/|scripts/|__pycache__/)
+
+# 全局配置
+default_language_version:
+  python: python3.11
+
+ci:
+  autofix_commit_msg: |
+    [pre-commit.ci] auto fixes from pre-commit.com hooks
+
+    for more information, see https://pre-commit.ci
+  autofix_prs: true
+  autoupdate_branch: ''
+  autoupdate_commit_msg: '[pre-commit.ci] pre-commit autoupdate'
+  autoupdate_schedule: weekly
+  skip: []
+  submodules: false 

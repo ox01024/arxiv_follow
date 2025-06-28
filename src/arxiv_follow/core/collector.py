@@ -4,407 +4,487 @@
 支持多种内容获取方式和智能内容提取
 """
 
-import httpx
-import re
+import asyncio
 import logging
-from typing import Dict, Any, Optional, List
-from datetime import datetime
+import re
+from typing import Dict, Any, Optional, List, AsyncIterator
+from datetime import datetime, date, timedelta
 import time
 import json
-from urllib.parse import urljoin
+from urllib.parse import urljoin, urlencode
+
+import httpx
+import xml.etree.ElementTree as ET
+from pydantic import ValidationError
+
+from ..models import Paper, PaperMetadata, PaperContent, SearchQuery, SearchResult
+from ..models.config import AppConfig
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
-class PaperCollector:
-    """论文内容采集器"""
+class ArxivCollector:
+    """ArXiv 论文收集器"""
     
-    def __init__(self):
-        self.session = httpx.Client(
-            timeout=30.0,
-            headers={
-                "User-Agent": "ArXiv-Follow-Collector/1.0 (Academic Research Tool)"
-            },
+    def __init__(self, config: AppConfig):
+        """初始化收集器"""
+        self.config = config
+        self.base_url = config.api.arxiv_base_url
+        self.delay = config.api.arxiv_delay_seconds
+        self.timeout = config.api.arxiv_timeout_seconds
+        
+        # HTTP客户端配置
+        self.client = httpx.AsyncClient(
+            timeout=self.timeout,
+            headers=config.get_api_headers(),
             follow_redirects=True
         )
     
-    def __del__(self):
-        """清理资源"""
-        if hasattr(self, 'session'):
-            self.session.close()
+        # 命名空间映射（用于XML解析）
+        self.namespaces = {
+            'atom': 'http://www.w3.org/2005/Atom',
+            'arxiv': 'http://arxiv.org/schemas/atom',
+            'opensearch': 'http://a9.com/-/spec/opensearch/1.1/'
+        }
     
-    def get_paper_abstract_page(self, arxiv_id: str) -> Optional[str]:
-        """
-        获取论文摘要页面内容
-        
-        Args:
-            arxiv_id: arXiv论文ID (如: 2501.12345)
-            
-        Returns:
-            摘要页面HTML内容
-        """
-        try:
-            url = f"https://arxiv.org/abs/{arxiv_id}"
-            logger.info(f"获取论文摘要页面: {url}")
-            
-            response = self.session.get(url)
-            response.raise_for_status()
-            
-            return response.text
-            
-        except Exception as e:
-            logger.error(f"获取摘要页面失败 {arxiv_id}: {e}")
-            return None
+    async def __aenter__(self):
+        """异步上下文管理器入口"""
+        return self
     
-    def extract_paper_metadata(self, html_content: str, arxiv_id: str) -> Dict[str, Any]:
-        """
-        从摘要页面提取详细元数据
+    async def __aexit__(self, exc_type, exc_val, exc_tb):
+        """异步上下文管理器出口"""
+        await self.close()
+    
+    async def close(self):
+        """关闭HTTP客户端"""
+        if self.client:
+            await self.client.aclose()
+    
+    def _build_query_url(self, **params) -> str:
+        """构建查询URL"""
+        # 处理搜索查询
+        search_query = params.get('search_query', '')
+        if not search_query:
+            raise ValueError("search_query is required")
         
-        Args:
-            html_content: HTML内容
-            arxiv_id: arXiv ID
-            
-        Returns:
-            详细的论文元数据
-        """
-        metadata = {
-            'arxiv_id': arxiv_id,
-            'url': f"https://arxiv.org/abs/{arxiv_id}",
-            'pdf_url': f"https://arxiv.org/pdf/{arxiv_id}.pdf",
-            'collection_time': datetime.now().isoformat()
+        # 构建查询参数
+        query_params = {
+            'search_query': search_query,
+            'start': params.get('start', 0),
+            'max_results': params.get('max_results', 50),
+            'sortBy': params.get('sortBy', 'submittedDate'),
+            'sortOrder': params.get('sortOrder', 'descending')
         }
         
-        try:
-            # 提取标题
-            title_pattern = r'<h1 class="title mathjax"[^>]*>\s*<span[^>]*>\s*(.*?)\s*</span>\s*</h1>'
-            title_match = re.search(title_pattern, html_content, re.DOTALL)
-            if title_match:
-                title = re.sub(r'<[^>]+>', '', title_match.group(1)).strip()
-                metadata['title'] = title
-            
-            # 提取作者信息（更详细）
-            authors_pattern = r'<div class="authors"[^>]*>(.*?)</div>'
-            authors_match = re.search(authors_pattern, html_content, re.DOTALL)
-            if authors_match:
-                authors_html = authors_match.group(1)
-                # 提取作者链接和姓名
-                author_links = re.findall(r'<a[^>]+>([^<]+)</a>', authors_html)
-                if author_links:
-                    metadata['authors'] = [author.strip() for author in author_links]
-                else:
-                    # 备选方案：提取纯文本作者
-                    authors_text = re.sub(r'<[^>]+>', '', authors_html)
-                    authors = [author.strip() for author in authors_text.split(',')]
-                    metadata['authors'] = [author for author in authors if author]
-            
-            # 提取完整摘要
-            abstract_pattern = r'<blockquote class="abstract mathjax"[^>]*>\s*<span[^>]*>Abstract:</span>\s*(.*?)\s*</blockquote>'
-            abstract_match = re.search(abstract_pattern, html_content, re.DOTALL)
-            if abstract_match:
-                abstract = re.sub(r'<[^>]+>', '', abstract_match.group(1)).strip()
-                abstract = re.sub(r'\s+', ' ', abstract)
-                metadata['abstract'] = abstract
-            
-            # 提取学科分类
-            subjects_pattern = r'<span class="primary-subject">([^<]+)</span>'
-            subjects_match = re.search(subjects_pattern, html_content)
-            if subjects_match:
-                metadata['primary_subject'] = subjects_match.group(1).strip()
-            
-            # 提取所有分类
-            all_subjects = re.findall(r'<td class="tablecell subjects">([^<]+)</td>', html_content)
-            if all_subjects:
-                subjects = [subj.strip() for subj in all_subjects[0].split(';') if subj.strip()]
-                metadata['subjects'] = subjects
-            
-            # 提取提交日期
-            submitted_pattern = r'<td class="tablecell"[^>]*>\[Submitted[^<]*on\s+([^\]]+)\]</td>'
-            submitted_match = re.search(submitted_pattern, html_content)
-            if submitted_match:
-                metadata['submitted_date'] = submitted_match.group(1).strip()
-            
-            # 提取评论信息
-            comments_pattern = r'<td class="tablecell comments mathjax">([^<]+)</td>'
-            comments_match = re.search(comments_pattern, html_content)
-            if comments_match:
-                metadata['comments'] = comments_match.group(1).strip()
-            
-            # 提取期刊引用信息
-            journal_pattern = r'<td class="tablecell jref">([^<]+)</td>'
-            journal_match = re.search(journal_pattern, html_content)
-            if journal_match:
-                metadata['journal_ref'] = journal_match.group(1).strip()
-            
-            # 提取DOI
-            doi_pattern = r'<td class="tablecell doi"[^>]*><a[^>]+>([^<]+)</a></td>'
-            doi_match = re.search(doi_pattern, html_content)
-            if doi_match:
-                metadata['doi'] = doi_match.group(1).strip()
-            
-            # 检查是否有HTML版本
-            html_version_pattern = r'<a[^>]+href="([^"]*html[^"]*)"[^>]*>HTML</a>'
-            html_version_match = re.search(html_version_pattern, html_content)
-            if html_version_match:
-                metadata['html_url'] = urljoin("https://arxiv.org", html_version_match.group(1))
-            
-        except Exception as e:
-            logger.error(f"提取元数据时出错: {e}")
-        
-        return metadata
+        return f"{self.base_url}?{urlencode(query_params)}"
     
-    def get_paper_html_content(self, arxiv_id: str) -> Optional[str]:
-        """
-        尝试获取论文的HTML版本内容
-        
-        Args:
-            arxiv_id: arXiv论文ID
-            
-        Returns:
-            HTML格式的论文内容，如果不可用则返回None
-        """
+    def _parse_arxiv_response(self, xml_content: str) -> Dict[str, Any]:
+        """解析ArXiv API响应"""
         try:
-            # 检查HTML版本是否可用
-            html_url = f"https://arxiv.org/html/{arxiv_id}"
-            logger.info(f"尝试获取HTML版本: {html_url}")
+            root = ET.fromstring(xml_content)
             
-            response = self.session.get(html_url)
+            # 获取总数
+            total_results = root.find('.//opensearch:totalResults', self.namespaces)
+            total = int(total_results.text) if total_results is not None else 0
+            
+            # 获取论文条目
+            entries = root.findall('.//atom:entry', self.namespaces)
+            papers = []
+            
+            for entry in entries:
+                try:
+                    paper_data = self._parse_entry(entry)
+                    if paper_data:
+                        papers.append(paper_data)
+                except Exception as e:
+                    logger.warning(f"Failed to parse entry: {e}")
+                    continue
+            
+            return {
+                'total_results': total,
+                'papers': papers,
+                'count': len(papers)
+            }
+            
+        except ET.ParseError as e:
+            logger.error(f"Failed to parse XML response: {e}")
+            raise ValueError(f"Invalid XML response: {e}")
+    
+    def _parse_entry(self, entry: ET.Element) -> Optional[Dict[str, Any]]:
+        """解析单个论文条目"""
+        try:
+            # 基础信息
+            title_elem = entry.find('.//atom:title', self.namespaces)
+            title = title_elem.text.strip() if title_elem is not None else ""
+            
+            summary_elem = entry.find('.//atom:summary', self.namespaces)
+            abstract = summary_elem.text.strip() if summary_elem is not None else ""
+            
+            # ArXiv ID
+            id_elem = entry.find('.//atom:id', self.namespaces)
+            if id_elem is None:
+                return None
+            
+            arxiv_url = id_elem.text.strip()
+            arxiv_id = arxiv_url.split('/')[-1]  # 提取ID部分
+            
+            # 作者
+            authors = []
+            author_elems = entry.findall('.//atom:author', self.namespaces)
+            for author_elem in author_elems:
+                name_elem = author_elem.find('.//atom:name', self.namespaces)
+                if name_elem is not None:
+                    authors.append(name_elem.text.strip())
+            
+            # 日期
+            published_elem = entry.find('.//atom:published', self.namespaces)
+            submitted_date = None
+            if published_elem is not None:
+                try:
+                    submitted_date = datetime.fromisoformat(
+                        published_elem.text.replace('Z', '+00:00')
+                    )
+                except ValueError:
+                    pass
+            
+            updated_elem = entry.find('.//atom:updated', self.namespaces)
+            updated_date = None
+            if updated_elem is not None:
+                try:
+                    updated_date = datetime.fromisoformat(
+                        updated_elem.text.replace('Z', '+00:00')
+                    )
+                except ValueError:
+                    pass
+            
+            # 分类
+            categories = []
+            category_elems = entry.findall('.//atom:category', self.namespaces)
+            for cat_elem in category_elems:
+                term = cat_elem.get('term')
+                if term:
+                    categories.append(term)
+            
+            primary_category = categories[0] if categories else None
+            
+            # DOI和期刊引用
+            doi = None
+            journal_ref = None
+            
+            arxiv_elems = entry.findall('.//arxiv:doi', self.namespaces)
+            if arxiv_elems:
+                doi = arxiv_elems[0].text.strip()
+            
+            journal_elems = entry.findall('.//arxiv:journal_ref', self.namespaces)
+            if journal_elems:
+                journal_ref = journal_elems[0].text.strip()
+            
+            # 构建链接
+            pdf_url = f"https://arxiv.org/pdf/{arxiv_id}.pdf"
+            
+            return {
+                'arxiv_id': arxiv_id,
+                'title': title,
+                'authors': authors,
+                'abstract': abstract,
+                'primary_category': primary_category,
+                'categories': categories,
+                'submitted_date': submitted_date,
+                'updated_date': updated_date,
+                'doi': doi,
+                'journal_ref': journal_ref,
+                'arxiv_url': arxiv_url,
+                'pdf_url': pdf_url,
+            }
+                
+        except Exception as e:
+            logger.error(f"Error parsing entry: {e}")
+            return None
+    
+    async def search_by_query(self, query: str, max_results: int = 50, start: int = 0) -> SearchResult:
+        """通过查询字符串搜索论文"""
+        try:
+            url = self._build_query_url(
+                search_query=query,
+                max_results=max_results,
+                start=start
+            )
+            
+            logger.info(f"Searching ArXiv: {query}")
+            response = await self.client.get(url)
+            response.raise_for_status()
+            
+            # 解析响应
+            result_data = self._parse_arxiv_response(response.text)
+            
+            # 构建搜索结果
+            search_query = SearchQuery(
+                query_id=f"arxiv_{datetime.now().strftime('%Y%m%d_%H%M%S')}",
+                search_type="keyword",
+                query_text=query
+            )
+            
+            search_result = SearchResult(
+                query=search_query,
+                papers=result_data['papers']
+            )
+            
+            search_result.metrics.total_found = result_data['total_results']
+            search_result.metrics.total_returned = result_data['count']
+            search_result.update_metrics()
+            
+            return search_result
+            
+        except httpx.HTTPError as e:
+            logger.error(f"HTTP error during search: {e}")
+            raise
+        except Exception as e:
+            logger.error(f"Error during search: {e}")
+            raise
+    
+    async def search_by_authors(self, authors: List[str], max_results: int = 50) -> SearchResult:
+        """按作者搜索论文"""
+        # 构建作者查询
+        author_queries = [f'au:"{author}"' for author in authors]
+        query = ' OR '.join(author_queries)
+        
+        return await self.search_by_query(query, max_results)
+    
+    async def search_by_categories(self, categories: List[str], max_results: int = 50) -> SearchResult:
+        """按分类搜索论文"""
+        # 构建分类查询
+        cat_queries = [f'cat:{cat}' for cat in categories]
+        query = ' AND '.join(cat_queries)
+        
+        return await self.search_by_query(query, max_results)
+    
+    async def search_by_date_range(
+        self, 
+        date_from: Optional[date] = None,
+        date_to: Optional[date] = None,
+        categories: Optional[List[str]] = None,
+        max_results: int = 50
+    ) -> SearchResult:
+        """按日期范围搜索论文"""
+        query_parts = []
+        
+        # 添加分类条件
+        if categories:
+            cat_queries = [f'cat:{cat}' for cat in categories]
+            query_parts.append(f"({' OR '.join(cat_queries)})")
+        else:
+            query_parts.append("all:*")  # 搜索所有分类
+        
+        # 添加日期条件
+        if date_from or date_to:
+            date_query = "submittedDate:["
+            
+            if date_from:
+                date_query += date_from.strftime("%Y%m%d")
+            else:
+                date_query += "*"
+            
+            date_query += " TO "
+            
+            if date_to:
+                date_query += date_to.strftime("%Y%m%d")
+            else:
+                date_query += "*"
+            
+            date_query += "]"
+            query_parts.append(date_query)
+        
+        query = " AND ".join(query_parts)
+        return await self.search_by_query(query, max_results)
+    
+    async def search_recent_papers(
+        self, 
+        days_back: int = 7,
+        categories: Optional[List[str]] = None,
+        max_results: int = 50
+    ) -> SearchResult:
+        """搜索最近的论文"""
+        date_from = date.today() - timedelta(days=days_back)
+        return await self.search_by_date_range(
+            date_from=date_from,
+            categories=categories,
+            max_results=max_results
+        )
+    
+    async def get_paper_details(self, arxiv_id: str) -> Optional[Paper]:
+        """获取单篇论文的详细信息"""
+        try:
+            # 通过ID搜索
+            result = await self.search_by_query(f"id:{arxiv_id}", max_results=1)
+            
+            if not result.papers:
+                logger.warning(f"Paper {arxiv_id} not found")
+                return None
+            
+            paper_data = result.papers[0]
+            
+            # 创建论文元数据
+            metadata = PaperMetadata(**paper_data)
+            
+            # 创建完整论文对象
+            paper = Paper(metadata=metadata)
+            
+            return paper
+            
+        except ValidationError as e:
+            logger.error(f"Validation error for paper {arxiv_id}: {e}")
+            return None
+        except Exception as e:
+            logger.error(f"Error getting paper details for {arxiv_id}: {e}")
+            return None
+    
+    async def get_paper_content(self, arxiv_id: str) -> Optional[PaperContent]:
+        """获取论文内容（如果有HTML版本）"""
+        try:
+            # 尝试获取HTML版本
+            html_url = f"https://arxiv.org/html/{arxiv_id}"
+            
+            response = await self.client.get(html_url)
             
             if response.status_code == 200:
-                logger.info(f"成功获取HTML版本: {arxiv_id}")
-                return response.text
-            else:
-                logger.info(f"HTML版本不可用: {arxiv_id} (状态码: {response.status_code})")
+                # 成功获取HTML内容
+                content = PaperContent(
+                    arxiv_id=arxiv_id,
+                    html_content=response.text,
+                    extraction_method="html",
+                    extraction_success=True,
+                    language="en"
+                )
+                
+                # 简单的内容提取
+                if "latex" in response.text.lower():
+                    content.has_latex = True
+                
+                if any(keyword in response.text.lower() for keyword in ["code", "github", "implementation"]):
+                    content.has_code = True
+                
+                return content
+        else:
+                logger.info(f"HTML version not available for {arxiv_id}")
                 return None
                 
         except Exception as e:
-            logger.warning(f"获取HTML版本失败 {arxiv_id}: {e}")
+            logger.warning(f"Failed to get content for {arxiv_id}: {e}")
             return None
     
-    def extract_text_from_html(self, html_content: str) -> Dict[str, Any]:
-        """
-        从HTML内容中提取结构化文本
+    async def collect_papers_batch(
+        self, 
+        arxiv_ids: List[str], 
+        include_content: bool = False
+    ) -> List[Paper]:
+        """批量收集论文"""
+        papers = []
         
-        Args:
-            html_content: HTML内容
-            
-        Returns:
-            提取的结构化文本信息
-        """
-        extracted = {
-            'has_html_version': True,
-            'extraction_time': datetime.now().isoformat()
-        }
-        
-        try:
-            # 提取标题
-            title_patterns = [
-                r'<h1[^>]*class="[^"]*title[^"]*"[^>]*>([^<]+)</h1>',
-                r'<title>([^<]+)</title>',
-                r'<h1[^>]*>([^<]+)</h1>'
-            ]
-            
-            for pattern in title_patterns:
-                title_match = re.search(pattern, html_content, re.IGNORECASE)
-                if title_match:
-                    extracted['title'] = title_match.group(1).strip()
-                    break
-            
-            # 提取章节内容
-            sections = []
-            
-            # 查找所有标题和内容
-            section_pattern = r'<h([1-6])[^>]*>([^<]+)</h\1>(.*?)(?=<h[1-6]|$)'
-            section_matches = re.findall(section_pattern, html_content, re.DOTALL | re.IGNORECASE)
-            
-            for level, title, content in section_matches:
-                # 清理内容
-                clean_content = re.sub(r'<[^>]+>', ' ', content)
-                clean_content = re.sub(r'\s+', ' ', clean_content).strip()
-                
-                if clean_content and len(clean_content) > 20:  # 过滤太短的内容
-                    sections.append({
-                        'level': int(level),
-                        'title': title.strip(),
-                        'content': clean_content[:2000]  # 限制长度
-                    })
-            
-            if sections:
-                extracted['sections'] = sections
-            
-            # 提取摘要
-            abstract_patterns = [
-                r'<div[^>]*class="[^"]*abstract[^"]*"[^>]*>(.*?)</div>',
-                r'<section[^>]*class="[^"]*abstract[^"]*"[^>]*>(.*?)</section>',
-                r'<p[^>]*class="[^"]*abstract[^"]*"[^>]*>(.*?)</p>'
-            ]
-            
-            for pattern in abstract_patterns:
-                abstract_match = re.search(pattern, html_content, re.DOTALL | re.IGNORECASE)
-                if abstract_match:
-                    abstract = re.sub(r'<[^>]+>', ' ', abstract_match.group(1))
-                    abstract = re.sub(r'\s+', ' ', abstract).strip()
-                    if len(abstract) > 50:
-                        extracted['html_abstract'] = abstract
-                        break
-            
-            # 提取参考文献数量
-            ref_patterns = [
-                r'<div[^>]*class="[^"]*reference[^"]*"',
-                r'<li[^>]*class="[^"]*reference[^"]*"',
-                r'\[(\d+)\].*?</li>'
-            ]
-            
-            ref_count = 0
-            for pattern in ref_patterns:
-                matches = re.findall(pattern, html_content, re.IGNORECASE)
-                ref_count = max(ref_count, len(matches))
-            
-            if ref_count > 0:
-                extracted['reference_count'] = ref_count
-            
-            # 估算文本长度
-            all_text = re.sub(r'<[^>]+>', ' ', html_content)
-            all_text = re.sub(r'\s+', ' ', all_text)
-            extracted['estimated_word_count'] = len(all_text.split())
-            
-        except Exception as e:
-            logger.error(f"从HTML提取文本时出错: {e}")
-        
-        return extracted
-    
-    def collect_paper_content(self, arxiv_id: str) -> Dict[str, Any]:
-        """
-        采集论文完整内容
-        
-        Args:
-            arxiv_id: arXiv论文ID
-            
-        Returns:
-            完整的论文内容信息
-        """
-        logger.info(f"开始采集论文内容: {arxiv_id}")
-        
-        # 获取基础元数据
-        abstract_html = self.get_paper_abstract_page(arxiv_id)
-        if not abstract_html:
-            return {'error': f'无法获取论文 {arxiv_id} 的摘要页面'}
-        
-        # 提取元数据
-        metadata = self.extract_paper_metadata(abstract_html, arxiv_id)
-        
-        # 尝试获取HTML版本
-        html_content = self.get_paper_html_content(arxiv_id)
-        
-        if html_content:
-            # 提取HTML版本的详细内容
-            html_extracted = self.extract_text_from_html(html_content)
-            metadata.update(html_extracted)
-        else:
-            metadata['has_html_version'] = False
-        
-        # 添加采集统计
-        metadata['content_sources'] = []
-        if abstract_html:
-            metadata['content_sources'].append('abstract_page')
-        if html_content:
-            metadata['content_sources'].append('html_version')
-        
-        logger.info(f"论文内容采集完成: {arxiv_id}, 数据源: {metadata.get('content_sources', [])}")
-        
-        return metadata
-    
-    def collect_multiple_papers(self, arxiv_ids: List[str], delay: float = 1.0) -> Dict[str, Dict[str, Any]]:
-        """
-        批量采集多篇论文内容
-        
-        Args:
-            arxiv_ids: arXiv ID列表
-            delay: 请求间隔延迟(秒)
-            
-        Returns:
-            论文ID到内容的映射
-        """
-        results = {}
-        
-        logger.info(f"开始批量采集 {len(arxiv_ids)} 篇论文")
-        
-        for i, arxiv_id in enumerate(arxiv_ids):
+        for arxiv_id in arxiv_ids:
             try:
-                results[arxiv_id] = self.collect_paper_content(arxiv_id)
+                # 获取论文详情
+                paper = await self.get_paper_details(arxiv_id)
+                if not paper:
+                    continue
                 
-                # 进度显示
-                if i % 5 == 0 or i == len(arxiv_ids) - 1:
-                    logger.info(f"采集进度: {i + 1}/{len(arxiv_ids)}")
+                # 获取内容（如果需要）
+                if include_content:
+                    content = await self.get_paper_content(arxiv_id)
+                    if content:
+                        paper.content = content
                 
-                # 添加延迟避免过于频繁的请求
-                if i < len(arxiv_ids) - 1:
-                    time.sleep(delay)
+                papers.append(paper)
+                
+                # 延迟以避免过度请求
+                if self.delay > 0:
+                    await asyncio.sleep(self.delay)
                     
             except Exception as e:
-                logger.error(f"采集论文 {arxiv_id} 时出错: {e}")
-                results[arxiv_id] = {'error': str(e)}
+                logger.error(f"Failed to collect paper {arxiv_id}: {e}")
+                continue
         
-        logger.info(f"批量采集完成，成功: {len([r for r in results.values() if 'error' not in r])}/{len(arxiv_ids)}")
+        logger.info(f"Successfully collected {len(papers)} papers out of {len(arxiv_ids)}")
+        return papers
+    
+    async def stream_search_results(
+        self, 
+        query: str, 
+        batch_size: int = 50,
+        max_total: Optional[int] = None
+    ) -> AsyncIterator[List[Dict[str, Any]]]:
+        """流式搜索结果（用于大量数据）"""
+        start = 0
+        total_retrieved = 0
         
-        return results
-
-
-def collect_paper_content(arxiv_id: str) -> Dict[str, Any]:
-    """
-    便捷函数：采集单篇论文内容
+        while True:
+            try:
+                # 计算本次获取数量
+                current_batch_size = batch_size
+                if max_total and (total_retrieved + batch_size) > max_total:
+                    current_batch_size = max_total - total_retrieved
+                
+                if current_batch_size <= 0:
+                    break
+                
+                # 执行搜索
+                result = await self.search_by_query(query, current_batch_size, start)
+                
+                if not result.papers:
+                    break
+                
+                yield result.papers
+                
+                total_retrieved += len(result.papers)
+                start += len(result.papers)
+                
+                # 检查是否已达到最大数量
+                if max_total and total_retrieved >= max_total:
+                    break
+                
+                # 检查是否还有更多结果
+                if len(result.papers) < batch_size:
+                    break
+                
+                # 延迟
+                if self.delay > 0:
+                    await asyncio.sleep(self.delay)
+                    
+            except Exception as e:
+                logger.error(f"Error in stream search: {e}")
+                break
     
-    Args:
-        arxiv_id: arXiv论文ID
+    def create_smart_query(
+        self, 
+        topics: List[str], 
+        authors: Optional[List[str]] = None,
+        date_from: Optional[date] = None,
+        exclude_categories: Optional[List[str]] = None
+    ) -> str:
+        """创建智能查询字符串"""
+        query_parts = []
         
-    Returns:
-        论文内容信息
-    """
-    collector = PaperCollector()
-    try:
-        return collector.collect_paper_content(arxiv_id)
-    finally:
-        collector.session.close()
-
-
-def collect_multiple_papers(arxiv_ids: List[str], delay: float = 1.0) -> Dict[str, Dict[str, Any]]:
-    """
-    便捷函数：批量采集论文内容
-    
-    Args:
-        arxiv_ids: arXiv ID列表
-        delay: 请求间隔延迟(秒)
+        # 主题查询（AND逻辑）
+        if topics:
+            topic_queries = [f'cat:{topic}' for topic in topics]
+            query_parts.append(f"({' AND '.join(topic_queries)})")
         
-    Returns:
-        论文ID到内容的映射
-    """
-    collector = PaperCollector()
-    try:
-        return collector.collect_multiple_papers(arxiv_ids, delay)
-    finally:
-        collector.session.close()
-
-
-if __name__ == "__main__":
-    # 测试代码
-    test_arxiv_id = "2501.12345"  # 示例ID，实际使用时需要替换
-    
-    print(f"🧪 测试论文内容采集: {test_arxiv_id}")
-    
-    try:
-        result = collect_paper_content(test_arxiv_id)
-        print("\n📄 采集结果:")
-        print(f"标题: {result.get('title', 'N/A')}")
-        print(f"作者: {result.get('authors', 'N/A')}")
-        print(f"摘要长度: {len(result.get('abstract', ''))}")
-        print(f"HTML版本: {'是' if result.get('has_html_version') else '否'}")
-        print(f"内容源: {result.get('content_sources', [])}")
+        # 作者查询
+        if authors:
+            author_queries = [f'au:"{author}"' for author in authors]
+            query_parts.append(f"({' OR '.join(author_queries)})")
         
-        if result.get('sections'):
-            print(f"发现章节数: {len(result['sections'])}")
-            for section in result['sections'][:3]:  # 显示前3个章节
-                print(f"  - {section['title']} (级别 {section['level']})")
-    
-    except Exception as e:
-        print(f"❌ 测试失败: {e}") 
+        # 排除分类
+        if exclude_categories:
+            for cat in exclude_categories:
+                query_parts.append(f"-cat:{cat}")
+        
+        # 日期过滤
+        if date_from:
+            date_query = f"submittedDate:[{date_from.strftime('%Y%m%d')} TO *]"
+            query_parts.append(date_query)
+        
+        return " AND ".join(query_parts) if query_parts else "all:*"
+
+ 

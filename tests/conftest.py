@@ -6,18 +6,19 @@ Pytest配置文件
 
 import os
 import sys
-import pytest
 from unittest.mock import Mock
 
+import pytest
+
 # 确保项目根目录在Python路径中
-project_root = os.path.join(os.path.dirname(__file__), '..')
+project_root = os.path.join(os.path.dirname(__file__), "..")
 sys.path.insert(0, project_root)
 
 
 @pytest.fixture(scope="session")
 def project_root_path():
     """项目根目录路径"""
-    return os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
+    return os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 
 
 @pytest.fixture(scope="session")
@@ -30,13 +31,13 @@ def sample_arxiv_id():
 def sample_paper_data():
     """示例论文数据"""
     return {
-        'arxiv_id': '2501.12345',
-        'title': 'Deep Learning for Cybersecurity: A Comprehensive Survey',
-        'authors': ['John Smith', 'Alice Brown', 'Bob Wilson'],
-        'abstract': 'This paper presents a comprehensive survey of deep learning techniques applied to cybersecurity problems.',
-        'subjects': ['cs.AI', 'cs.CR', 'cs.LG'],
-        'url': 'https://arxiv.org/abs/2501.12345',
-        'pdf_url': 'https://arxiv.org/pdf/2501.12345.pdf'
+        "arxiv_id": "2501.12345",
+        "title": "Deep Learning for Cybersecurity: A Comprehensive Survey",
+        "authors": ["John Smith", "Alice Brown", "Bob Wilson"],
+        "abstract": "This paper presents a comprehensive survey of deep learning techniques applied to cybersecurity problems.",
+        "subjects": ["cs.AI", "cs.CR", "cs.LG"],
+        "url": "https://arxiv.org/abs/2501.12345",
+        "pdf_url": "https://arxiv.org/pdf/2501.12345.pdf",
     }
 
 
@@ -46,7 +47,7 @@ def sample_researchers_data():
     return [
         {"name": "John Smith", "affiliation": "MIT", "field": "AI"},
         {"name": "Alice Brown", "affiliation": "Stanford", "field": "ML"},
-        {"name": "Bob Wilson", "affiliation": "CMU", "field": "Security"}
+        {"name": "Bob Wilson", "affiliation": "CMU", "field": "Security"},
     ]
 
 
@@ -68,18 +69,14 @@ def mock_successful_api_response():
     return {
         "success": True,
         "data": "Mock successful response",
-        "timestamp": "2025-01-15T09:00:00Z"
+        "timestamp": "2025-01-15T09:00:00Z",
     }
 
 
 @pytest.fixture
 def mock_failed_api_response():
     """模拟失败的API响应"""
-    return {
-        "success": False,
-        "error": "Mock API error",
-        "error_code": "TEST_ERROR"
-    }
+    return {"success": False, "error": "Mock API error", "error_code": "TEST_ERROR"}
 
 
 @pytest.fixture(autouse=True)
@@ -87,17 +84,14 @@ def clean_environment():
     """清理测试环境变量"""
     # 在测试前保存原有环境变量
     original_env = {}
-    test_env_vars = [
-        'OPEN_ROUTE_API_KEY',
-        'DIDA_ACCESS_TOKEN'
-    ]
-    
+    test_env_vars = ["OPEN_ROUTE_API_KEY", "DIDA_ACCESS_TOKEN"]
+
     for var in test_env_vars:
         if var in os.environ:
             original_env[var] = os.environ[var]
-    
+
     yield
-    
+
     # 测试后恢复原有环境变量
     for var in test_env_vars:
         if var in original_env:
@@ -109,18 +103,10 @@ def clean_environment():
 def pytest_configure(config):
     """Pytest配置钩子"""
     # 添加自定义标记
-    config.addinivalue_line(
-        "markers", "slow: 标记运行较慢的测试"
-    )
-    config.addinivalue_line(
-        "markers", "integration: 标记集成测试"
-    )
-    config.addinivalue_line(
-        "markers", "api: 标记需要API密钥的测试"
-    )
-    config.addinivalue_line(
-        "markers", "network: 标记需要网络连接的测试"
-    )
+    config.addinivalue_line("markers", "slow: 标记运行较慢的测试")
+    config.addinivalue_line("markers", "integration: 标记集成测试")
+    config.addinivalue_line("markers", "api: 标记需要API密钥的测试")
+    config.addinivalue_line("markers", "network: 标记需要网络连接的测试")
 
 
 def pytest_collection_modifyitems(config, items):
@@ -128,29 +114,33 @@ def pytest_collection_modifyitems(config, items):
     # 自动为需要API密钥的测试添加标记
     for item in items:
         # 检查测试名称或文档字符串中是否包含API相关关键词
-        if any(keyword in item.name.lower() for keyword in ['api', 'connection', 'token']):
-            if 'api' not in [mark.name for mark in item.iter_markers()]:
+        if any(
+            keyword in item.name.lower() for keyword in ["api", "connection", "token"]
+        ):
+            if "api" not in [mark.name for mark in item.iter_markers()]:
                 item.add_marker(pytest.mark.api)
-        
+
         # 检查是否需要网络连接
-        if any(keyword in item.name.lower() for keyword in ['fetch', 'download', 'request']):
-            if 'network' not in [mark.name for mark in item.iter_markers()]:
+        if any(
+            keyword in item.name.lower() for keyword in ["fetch", "download", "request"]
+        ):
+            if "network" not in [mark.name for mark in item.iter_markers()]:
                 item.add_marker(pytest.mark.network)
 
 
 @pytest.fixture
 def skip_if_no_api_key(request):
     """如果没有API密钥则跳过测试"""
-    if not os.getenv('OPEN_ROUTE_API_KEY'):
+    if not os.getenv("OPEN_ROUTE_API_KEY"):
         pytest.skip("需要OPEN_ROUTE_API_KEY环境变量")
 
 
 @pytest.fixture
 def skip_if_no_dida_token(request):
     """如果没有滴答清单token则跳过测试"""
-    if not os.getenv('DIDA_ACCESS_TOKEN'):
+    if not os.getenv("DIDA_ACCESS_TOKEN"):
         pytest.skip("需要DIDA_ACCESS_TOKEN环境变量")
 
 
 # 测试环境配置
-pytest_plugins = [] 
+pytest_plugins = []

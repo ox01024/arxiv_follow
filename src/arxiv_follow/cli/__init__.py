@@ -1,15 +1,9 @@
 """
-命令行接口模块
+ArXiv Follow 命令行界面
 
-包含每日监控、每周汇总、主题搜索等命令行工具。
+现代化的CLI工具，提供统一的命令行接口。
 """
 
-from .daily import daily_monitor
-from .weekly import weekly_summary
-from .topic import topic_search
+from .main import app
 
-__all__ = [
-    "daily_monitor",
-    "weekly_summary",
-    "topic_search",
-] 
+__all__ = ["app"]

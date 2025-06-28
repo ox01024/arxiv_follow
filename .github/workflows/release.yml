@@ -1,0 +1,161 @@
+name: Release and Deploy
+
+on:
+  push:
+    tags:
+      - 'v*'
+  release:
+    types: [published]
+
+env:
+  PYTHON_VERSION: "3.11"
+
+jobs:
+  # 构建分发包
+  build:
+    name: Build Distribution
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      run: uv python install ${{ env.PYTHON_VERSION }}
+
+    - name: Install build dependencies
+      run: uv sync --dev
+
+    - name: Build package
+      run: uv build
+
+    - name: Check package
+      run: |
+        uv run python -m twine check dist/*
+
+    - name: Upload artifacts
+      uses: actions/upload-artifact@v4
+      with:
+        name: distribution-packages
+        path: dist/
+        retention-days: 7
+
+  # 测试分发包
+  test-package:
+    name: Test Package Installation
+    needs: build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.11", "3.12"]
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+
+    - name: Set up Python ${{ matrix.python-version }}
+      run: uv python install ${{ matrix.python-version }}
+
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: distribution-packages
+        path: dist/
+
+    - name: Install package from wheel
+      run: |
+        uv pip install dist/*.whl
+
+    - name: Test installation
+      run: |
+        uv run arxiv-follow --version
+        uv run arxiv-follow --help
+        uv run python -c "import arxiv_follow; print(f'✅ {arxiv_follow.__version__}')"
+
+  # 发布到PyPI
+  publish-pypi:
+    name: Publish to PyPI
+    needs: [build, test-package]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'published'
+    environment:
+      name: pypi
+      url: https://pypi.org/p/arxiv-follow
+    permissions:
+      id-token: write
+    
+    steps:
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: distribution-packages
+        path: dist/
+
+    - name: Publish to PyPI
+      uses: pypa/gh-action-pypi-publish@release/v1
+
+  # 发布到GitHub Releases
+  publish-github:
+    name: Publish to GitHub
+    needs: [build, test-package]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'published'
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Download artifacts
+      uses: actions/download-artifact@v4
+      with:
+        name: distribution-packages
+        path: dist/
+
+    - name: Upload Release Assets
+      uses: softprops/action-gh-release@v1
+      with:
+        files: dist/*
+        tag_name: ${{ github.ref_name }}
+        name: Release ${{ github.ref_name }}
+        draft: false
+        prerelease: false
+
+  # 部署文档
+  deploy-docs:
+    name: Deploy Documentation
+    needs: [build, test-package]
+    runs-on: ubuntu-latest
+    if: github.event_name == 'release' && github.event.action == 'published'
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Install uv
+      uses: astral-sh/setup-uv@v4
+
+    - name: Set up Python ${{ env.PYTHON_VERSION }}
+      run: uv python install ${{ env.PYTHON_VERSION }}
+
+    - name: Install documentation dependencies
+      run: uv sync --group docs
+
+    - name: Build documentation
+      run: |
+        uv run mkdocs build
+
+    - name: Upload pages artifact
+      uses: actions/upload-pages-artifact@v3
+      with:
+        path: site/
+
+    - name: Deploy to GitHub Pages
+      id: deployment
+      uses: actions/deploy-pages@v4 
