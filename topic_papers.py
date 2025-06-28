@@ -103,196 +103,95 @@ def parse_arxiv_search_results(html_content: str) -> List[Dict[str, Any]]:
     if total_match:
         total_count = int(total_match.group(1).replace(',', ''))
     
-    # 更精确的解析策略 - 基于实际HTML结构
-    # 查找论文列表的容器，通常是 <ol> 或类似的结构
-    
-    # 模式1: 寻找论文条目 - 匹配arXiv ID开头的论文
-    # 基于用户提供的搜索结果格式：1. arXiv:2506.21106 [pdf, ps, other] cs.CR cs.AI
-    paper_pattern = r'(\d+)\.\s*arXiv:(\d{4}\.\d{4,5})\s*\[([^\]]+)\]\s*((?:cs\.\w+\s*)+)(.*?)(?=\d+\.\s*arXiv:|\n\n|\Z)'
+    # 查找论文条目 - 使用实际的HTML结构
+    paper_pattern = r'<li class="arxiv-result">(.*?)</li>'
     paper_matches = re.findall(paper_pattern, html_content, re.DOTALL)
     
-    if not paper_matches:
-        # 模式2: 更宽泛的匹配模式
-        paper_pattern = r'arXiv:(\d{4}\.\d{4,5})\s*\[([^\]]+)\]\s*(.*?)(?=arXiv:|\Z)'
-        alt_matches = re.findall(paper_pattern, html_content, re.DOTALL)
+    for match in paper_matches:
+        paper = {
+            'total_results': total_count
+        }
         
-        for arxiv_id, file_types, content in alt_matches:
-            paper = {
-                'arxiv_id': arxiv_id,
-                'url': f"https://arxiv.org/abs/{arxiv_id}",
-                'file_types': [t.strip() for t in file_types.split(',')],
-                'total_results': total_count
-            }
-            
-            # 解析内容
-            _parse_paper_content(paper, content)
-            
-            if paper.get('title'):
-                papers.append(paper)
-    else:
-        # 使用模式1的结果
-        for seq_num, arxiv_id, file_types, subjects, content in paper_matches:
-            paper = {
-                'arxiv_id': arxiv_id,
-                'url': f"https://arxiv.org/abs/{arxiv_id}",
-                'subjects': [s.strip() for s in subjects.split() if s.strip()],
-                'file_types': [t.strip() for t in file_types.split(',')],
-                'sequence_number': int(seq_num),
-                'total_results': total_count
-            }
-            
-            # 解析内容
-            _parse_paper_content(paper, content)
-            
-            if paper.get('title'):
-                papers.append(paper)
-    
-    # 如果以上都没找到，尝试基于HTML标签的解析
-    if not papers:
-        papers = _parse_html_structure(html_content, total_count)
-    
-    return papers
-
-
-def _parse_paper_content(paper: Dict[str, Any], content: str) -> None:
-    """
-    解析论文内容，提取标题、作者、摘要等信息
-    
-    Args:
-        paper: 论文字典（会被修改）
-        content: 内容字符串
-    """
-    # 提取标题 - 通常在最开始
-    title_patterns = [
-        r'^\s*([^\n]+?)(?:\s*Authors?:|\s*Abstract:|\n\s*\n)',
-        r'^\s*([^\n]{10,200}?)(?:\s*Authors?:)',
-        r'^\s*([^\n]+)',
-    ]
-    
-    for pattern in title_patterns:
-        title_match = re.search(pattern, content.strip(), re.MULTILINE | re.DOTALL)
+        # 提取arXiv ID和URL
+        id_pattern = r'<a href="https://arxiv\.org/abs/(\d{4}\.\d{4,5})">arXiv:(\d{4}\.\d{4,5})</a>'
+        id_match = re.search(id_pattern, match)
+        if id_match:
+            paper['arxiv_id'] = id_match.group(1)
+            paper['url'] = f"https://arxiv.org/abs/{paper['arxiv_id']}"
+        
+        # 提取标题
+        title_pattern = r'<p class="title is-5 mathjax"[^>]*>\s*(.*?)\s*</p>'
+        title_match = re.search(title_pattern, match, re.DOTALL)
         if title_match:
             title = title_match.group(1).strip()
-            # 清理标题
-            title = re.sub(r'▽\s*More|△\s*Less', '', title)
+            # 清理HTML标签
+            title = re.sub(r'<[^>]+>', '', title)
             title = re.sub(r'\s+', ' ', title).strip()
-            if len(title) > 10 and not title.lower().startswith('authors'):
+            if title:
                 paper['title'] = title
-                break
-    
-    # 提取作者
-    authors_patterns = [
-        r'Authors?:\s*([^\n]+?)(?:\s*Abstract:|\s*Submitted|\n\s*\n)',
-        r'Authors?:\s*([^\n]+)',
-    ]
-    
-    for pattern in authors_patterns:
-        authors_match = re.search(pattern, content, re.DOTALL | re.IGNORECASE)
+        
+        # 提取作者
+        authors_pattern = r'<p class="authors"[^>]*>.*?<span[^>]+>Authors:</span>(.*?)</p>'
+        authors_match = re.search(authors_pattern, match, re.DOTALL)
         if authors_match:
-            authors_text = authors_match.group(1).strip()
-            # 清理并分割作者
-            authors_text = re.sub(r'▽\s*More|△\s*Less', '', authors_text)
-            authors = [author.strip() for author in re.split(r',|;', authors_text) if author.strip()]
-            paper['authors'] = authors
-            break
-    
-    # 提取摘要
-    abstract_patterns = [
-        r'Abstract:\s*(.*?)(?:\s*Submitted|\s*Comments|\n\s*\n|\Z)',
-        r'Abstract:\s*(.*?)(?=△\s*Less|\Z)',
-    ]
-    
-    for pattern in abstract_patterns:
-        abstract_match = re.search(pattern, content, re.DOTALL | re.IGNORECASE)
-        if abstract_match:
-            abstract = abstract_match.group(1).strip()
-            # 清理摘要
-            abstract = re.sub(r'▽\s*More|△\s*Less', '', abstract)
-            abstract = re.sub(r'\s+', ' ', abstract).strip()
-            if len(abstract) > 20:
-                paper['abstract'] = abstract
-            break
-    
-    # 提取提交日期
-    submitted_patterns = [
-        r'Submitted\s+(\d{1,2}\s+\w+,?\s+\d{4})',
-        r'originally announced\s+(\w+\s+\d{4})',
-    ]
-    
-    for pattern in submitted_patterns:
-        submitted_match = re.search(pattern, content, re.IGNORECASE)
+            authors_html = authors_match.group(1)
+            # 提取所有作者链接
+            author_links = re.findall(r'<a[^>]+>(.*?)</a>', authors_html)
+            if author_links:
+                authors = [re.sub(r'<[^>]+>', '', author).strip() for author in author_links]
+                authors = [author for author in authors if author]  # 过滤空字符串
+                if authors:
+                    paper['authors'] = authors
+        
+        # 提取学科分类
+        subjects = []
+        subject_pattern = r'<span class="tag[^"]*"[^>]*data-tooltip="([^"]+)"[^>]*>([^<]+)</span>'
+        subject_matches = re.findall(subject_pattern, match)
+        for tooltip, subject_code in subject_matches:
+            subjects.append(subject_code.strip())
+        if subjects:
+            paper['subjects'] = subjects
+        
+        # 提取摘要 - 优先获取完整摘要
+        abstract_patterns = [
+            # 优先提取完整摘要
+            r'<span[^>]*class="[^"]*abstract-full[^"]*"[^>]*[^>]*>(.*?)</span>',
+            # 备选：普通摘要段落
+            r'<p[^>]*class="[^"]*abstract[^"]*"[^>]*>.*?<span[^>]+>Abstract[^<]*</span>:\s*(.*?)</p>',
+            # 备选：abstract-short（如果没有full版本）
+            r'<span[^>]*class="[^"]*abstract-short[^"]*"[^>]*[^>]*>(.*?)</span>',
+        ]
+        
+        for pattern in abstract_patterns:
+            abstract_match = re.search(pattern, match, re.DOTALL | re.IGNORECASE)
+            if abstract_match:
+                abstract = abstract_match.group(1).strip()
+                # 清理HTML标签、链接和多余空白
+                abstract = re.sub(r'<a[^>]*>.*?</a>', '', abstract)  # 移除More/Less链接
+                abstract = re.sub(r'<[^>]+>', '', abstract)
+                abstract = re.sub(r'&hellip;.*', '', abstract)  # 移除省略号及后续内容
+                abstract = re.sub(r'\s+', ' ', abstract).strip()
+                if len(abstract) > 20:  # 确保不是空的或太短的内容
+                    paper['abstract'] = abstract
+                    break
+        
+        # 提取提交日期
+        submitted_pattern = r'<span[^>]+>Submitted</span>\s+([^;]+);'
+        submitted_match = re.search(submitted_pattern, match)
         if submitted_match:
-            paper['submitted_date'] = submitted_match.group(1)
-            break
-
-
-def _parse_html_structure(html_content: str, total_count: int) -> List[Dict[str, Any]]:
-    """
-    基于HTML结构解析论文信息
-    
-    Args:
-        html_content: HTML 内容
-        total_count: 总结果数
+            paper['submitted_date'] = submitted_match.group(1).strip()
         
-    Returns:
-        论文列表
-    """
-    papers = []
-    
-    # 寻找论文列表容器
-    list_patterns = [
-        r'<ol[^>]*class="[^"]*breathe[^"]*"[^>]*>(.*?)</ol>',
-        r'<ol[^>]*>(.*?)</ol>',
-        r'<div[^>]*class="[^"]*results[^"]*"[^>]*>(.*?)</div>',
-    ]
-    
-    list_content = None
-    for pattern in list_patterns:
-        list_match = re.search(pattern, html_content, re.DOTALL)
-        if list_match:
-            list_content = list_match.group(1)
-            break
-    
-    if list_content:
-        # 在列表中查找论文项
-        item_pattern = r'<li[^>]*>(.*?)</li>'
-        item_matches = re.findall(item_pattern, list_content, re.DOTALL)
+        # 提取评论信息
+        comments_pattern = r'<p class="comments[^"]*"[^>]*>.*?<span[^>]+>Comments:</span>\s*<span[^>]*>(.*?)</span>'
+        comments_match = re.search(comments_pattern, match, re.DOTALL)
+        if comments_match:
+            comments = re.sub(r'<[^>]+>', '', comments_match.group(1)).strip()
+            if comments:
+                paper['comments'] = comments
         
-        for item_content in item_matches:
-            # 提取 arXiv ID
-            id_match = re.search(r'arXiv:(\d{4}\.\d{4,5})', item_content)
-            if id_match:
-                arxiv_id = id_match.group(1)
-                paper = {
-                    'arxiv_id': arxiv_id,
-                    'url': f"https://arxiv.org/abs/{arxiv_id}",
-                    'total_results': total_count
-                }
-                
-                # 提取标题
-                title_patterns = [
-                    r'<p[^>]*class="[^"]*title[^"]*"[^>]*>.*?<a[^>]*>(.*?)</a>',
-                    r'<a[^>]*href="/abs/[^"]*"[^>]*>(.*?)</a>',
-                ]
-                
-                for pattern in title_patterns:
-                    title_match = re.search(pattern, item_content, re.DOTALL)
-                    if title_match:
-                        title = re.sub(r'<[^>]+>', '', title_match.group(1)).strip()
-                        paper['title'] = title
-                        break
-                
-                # 提取作者
-                authors_pattern = r'<p[^>]*class="[^"]*authors[^"]*"[^>]*>(.*?)</p>'
-                authors_match = re.search(authors_pattern, item_content, re.DOTALL)
-                if authors_match:
-                    authors_html = authors_match.group(1)
-                    authors = re.findall(r'<a[^>]*>(.*?)</a>', authors_html)
-                    if authors:
-                        paper['authors'] = [re.sub(r'<[^>]+>', '', author).strip() for author in authors]
-                
-                if paper.get('title'):
-                    papers.append(paper)
+        # 只添加至少有标题或arXiv ID的论文
+        if paper.get('title') or paper.get('arxiv_id'):
+            papers.append(paper)
     
     return papers
 
@@ -467,8 +366,6 @@ def display_search_results(results: Dict[str, Any], limit: int = 10) -> None:
         
         if paper.get('abstract'):
             abstract = paper['abstract']
-            if len(abstract) > 200:
-                abstract = abstract[:200] + "..."
             print(f"📝 摘要: {abstract}")
     
     if len(results['papers']) > limit:
