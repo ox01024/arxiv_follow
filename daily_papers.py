@@ -19,7 +19,7 @@ except ImportError:
     print("⚠️ 无法导入滴答清单集成模块，相关功能将被禁用")
     def create_arxiv_task(*args, **kwargs):
         return {"success": False, "error": "模块未导入"}
-    DIDA_API_CONFIG = {"enable_bilingual": False}
+    DIDA_API_CONFIG = {"enable_bilingual": True}  # 修复：保持双语翻译启用
 
 
 def fetch_researchers_from_tsv(url: str) -> List[Dict[str, Any]]:
