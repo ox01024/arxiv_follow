@@ -11,6 +11,14 @@ from datetime import datetime, timedelta
 import re
 from urllib.parse import urlencode
 
+# 导入滴答清单集成
+try:
+    from dida_integration import create_arxiv_task
+except ImportError:
+    print("⚠️ 无法导入滴答清单集成模块，相关功能将被禁用")
+    def create_arxiv_task(*args, **kwargs):
+        return {"success": False, "error": "模块未导入"}
+
 
 def fetch_researchers_from_tsv(url: str) -> List[Dict[str, Any]]:
     """
@@ -395,6 +403,75 @@ def display_researchers(researchers: List[Dict[str, Any]]) -> None:
         print()
 
 
+def create_weekly_dida_task(researchers: List[Dict[str, Any]], 
+                           all_papers: Dict[str, List[Dict[str, Any]]],
+                           error: str = None) -> None:
+    """
+    创建周报论文监控的滴答清单任务
+    
+    Args:
+        researchers: 研究者列表
+        all_papers: 论文数据
+        error: 错误信息（如果有的话）
+    """
+    print("\n📝 创建滴答清单任务...")
+    
+    try:
+        # 计算统计信息
+        total_papers = sum(len(papers) for papers in all_papers.values()) if all_papers else 0
+        researcher_count = len(researchers)
+        
+        # 构建任务摘要
+        if error:
+            summary = f"❌ 周报论文监控执行失败\n错误信息: {error}"
+            details = f"执行时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        elif total_papers == 0:
+            summary = f"📚 本周无新论文发现"
+            details = f"监控了 {researcher_count} 位研究者\n监控周期: {(datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')} 至 {datetime.now().strftime('%Y-%m-%d')}\n执行时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        else:
+            summary = f"🎉 本周发现 {total_papers} 篇新论文！"
+            # 构建详细信息
+            details_lines = [f"监控了 {researcher_count} 位研究者"]
+            details_lines.append(f"监控周期: {(datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')} 至 {datetime.now().strftime('%Y-%m-%d')}")
+            
+            # 添加发现论文的研究者详情
+            if all_papers:
+                details_lines.append("\n📊 论文分布:")
+                for author, papers in all_papers.items():
+                    details_lines.append(f"• {author}: {len(papers)} 篇")
+                    # 添加前2篇论文标题（周报篇幅更长，显示少一些）
+                    for i, paper in enumerate(papers[:2], 1):
+                        title = paper.get('title', '未知标题')
+                        if len(title) > 50:
+                            title = title[:50] + "..."
+                        details_lines.append(f"  {i}. {title}")
+                    if len(papers) > 2:
+                        details_lines.append(f"  ... 还有 {len(papers)-2} 篇")
+            
+            details_lines.append(f"\n⏰ 执行时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            details = "\n".join(details_lines)
+        
+        # 创建任务
+        result = create_arxiv_task(
+            report_type="weekly",
+            summary=summary,
+            details=details,
+            paper_count=total_papers
+        )
+        
+        if result.get("success"):
+            print(f"✅ 滴答清单任务创建成功!")
+            if result.get("task_id"):
+                print(f"   任务ID: {result['task_id']}")
+            if result.get("url"):
+                print(f"   任务链接: {result['url']}")
+        else:
+            print(f"❌ 滴答清单任务创建失败: {result.get('error', '未知错误')}")
+            
+    except Exception as e:
+        print(f"❌ 创建滴答清单任务时出错: {e}")
+
+
 def main():
     """主函数"""
     try:
@@ -419,15 +496,23 @@ def main():
             display_papers(all_papers, "最近一周")
             
             print(f"\n✅ 周报监控完成 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            
+            # 创建滴答清单任务
+            create_weekly_dida_task(researchers, all_papers)
+            
             return researchers, all_papers
         else:
             print("⚠️ 未找到研究者数据，请检查数据源")
+            # 即使没有数据也创建一个记录任务
+            create_weekly_dida_task([], {})
             return [], {}
     
     except Exception as e:
         print(f"❌ 程序执行出错: {e}")
         import traceback
         traceback.print_exc()
+        # 创建错误记录任务
+        create_weekly_dida_task([], {}, error=str(e))
         return [], {}
 
 

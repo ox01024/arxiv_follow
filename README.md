@@ -20,6 +20,7 @@
 - 📅 **智能日期回退**: 自动处理日期范围搜索无结果的情况
 - 🤖 **自动化运行**: GitHub Actions 定时执行
 - 🕘 **中国时区**: 适配中国时间运行
+- 📝 **滴答清单集成**: 自动创建任务到你的滴答清单
 
 ## 📋 脚本说明
 
@@ -166,12 +167,53 @@ schedule:
   - cron: '0 1 * * *'  # 分 时 日 月 星期
 ```
 
+## 📝 滴答清单集成
+
+### 🎯 功能概述
+系统已集成滴答清单API，可在每次执行后自动创建任务：
+- ✅ 监控结果自动同步到滴答清单
+- ✅ 智能任务优先级设置（基于发现论文数量）
+- ✅ 详细任务内容（包含论文统计和详情）
+- ✅ 错误监控（执行失败时也会创建记录任务）
+
+### ⚙️ 配置方法
+
+#### 1. 获取 Access Token
+请参考 [滴答清单集成配置指南](./DIDA_INTEGRATION_GUIDE.md) 获取详细步骤。
+
+#### 2. 配置 GitHub Secrets
+1. 进入仓库 `Settings` → `Secrets and variables` → `Actions`
+2. 点击 `New repository secret`
+3. Name: `DIDA_ACCESS_TOKEN`
+4. Secret: 你的滴答清单access token
+5. 点击 `Add secret`
+
+#### 3. 本地测试
+```bash
+# 设置环境变量
+export DIDA_ACCESS_TOKEN="your_access_token_here"
+
+# 测试连接
+uv run python test_dida_integration.py
+
+# 运行脚本（会自动创建滴答清单任务）
+uv run python daily_papers.py
+```
+
+### 📋 任务示例
+创建的任务包含以下信息：
+- **标题**: 📄 每日论文监控 - 2025-01-15
+- **内容**: 发现论文数量、研究者统计、论文详情等
+- **标签**: `arxiv`, `论文监控`, `daily`/`weekly`/`topic`
+- **优先级**: 基于发现论文数量智能设置
+
 ## 📝 注意事项
 
 1. **时区转换**: GitHub Actions 使用 UTC 时间，已自动转换为中国时间
 2. **网络限制**: arXiv 可能有访问频率限制，避免过于频繁的请求
 3. **数据源**: 依赖 Google Sheets，确保链接可访问
 4. **论文识别**: 基于作者姓名精确匹配，注意姓名拼写
+5. **滴答清单**: API集成是可选的，不配置token不会影响基本功能
 
 ## 🎯 后续优化
 

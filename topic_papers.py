@@ -12,6 +12,14 @@ import re
 from urllib.parse import urlencode
 import json
 
+# 导入滴答清单集成
+try:
+    from dida_integration import create_arxiv_task
+except ImportError:
+    print("⚠️ 无法导入滴答清单集成模块，相关功能将被禁用")
+    def create_arxiv_task(*args, **kwargs):
+        return {"success": False, "error": "模块未导入"}
+
 
 def build_topic_search_url(
     topics: List[str], 
@@ -499,63 +507,156 @@ def get_topic_papers_with_smart_dates(
     return fetch_papers_by_topic(topics, date_from, date_to)
 
 
-def main():
-    """主函数"""
-    print("🔍 基于主题的论文搜索系统")
-    print("="*50)
+def create_topic_dida_task(topics: List[str], 
+                          results: Dict[str, Any],
+                          error: str = None) -> None:
+    """
+    创建主题论文搜索的滴答清单任务
     
-    # 默认搜索 AI + 安全/密码学 交叉领域
-    topics = ["cs.AI", "cs.CR"]
+    Args:
+        topics: 搜索主题列表
+        results: 搜索结果字典
+        error: 错误信息（如果有的话）
+    """
+    print("\n📝 创建滴答清单任务...")
     
-    # 可以通过命令行参数或者直接修改来自定义
-    import sys
-    if len(sys.argv) > 1:
-        # 支持命令行输入主题
-        topics = sys.argv[1].split(',')
-        topics = [topic.strip() for topic in topics]  # 清理空格
-    
-    print(f"📚 搜索主题: {' AND '.join(topics)}")
-    
-    # 检测是否在CI环境中运行
-    is_ci = os.getenv('GITHUB_ACTIONS') == 'true'
-    
-    if is_ci:
-        # CI环境：运行单一的智能搜索，减少输出
-        print("\n🔍 CI模式: 智能搜索最新论文")
-        results = get_topic_papers_with_smart_dates(topics, days_back=3)
-        display_search_results(results, limit=10)
-    else:
-        # 本地环境：运行完整的测试模式
-        print("\n🔍 测试1: 智能搜索最近3天的论文")
-        results1 = get_topic_papers_with_smart_dates(topics, days_back=3)
-        display_search_results(results1, limit=5)
-        
-        print("\n\n🔍 测试2: 不限日期搜索（获取最新50篇）")
-        results2 = fetch_papers_by_topic(topics, date_from=None, date_to=None)
-        display_search_results(results2, limit=10)
-        
-        results = results2 if results2['papers'] else results1
-    
-    # 保存最新的结果到文件
-    output_file = f"reports/topic_papers_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
     try:
-        os.makedirs("reports", exist_ok=True)
+        # 计算统计信息
+        papers = results.get('papers', []) if results else []
+        paper_count = len(papers)
         
-        with open(output_file, 'w', encoding='utf-8') as f:
-            json.dump(results, f, ensure_ascii=False, indent=2)
-        print(f"\n💾 结果已保存到: {output_file}")
+        # 构建任务摘要
+        topics_str = ' AND '.join(topics)
+        if error:
+            summary = f"❌ 主题论文搜索执行失败\n主题: {topics_str}\n错误信息: {error}"
+            details = f"执行时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        elif paper_count == 0:
+            summary = f"🎯 主题论文搜索未发现新论文\n主题: {topics_str}"
+            details = f"搜索主题: {topics_str}\n"
+            if results:
+                strategy_info = []
+                for strategy in results.get('attempted_strategies', []):
+                    if 'error' in strategy:
+                        strategy_info.append(f"❌ {strategy['name']}: {strategy['error']}")
+                    else:
+                        strategy_info.append(f"• {strategy['name']}: {strategy['papers_found']} 篇")
+                details += f"尝试策略:\n" + "\n".join(strategy_info)
+            details += f"\n\n⏰ 执行时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+        else:
+            summary = f"🎉 主题论文搜索发现 {paper_count} 篇论文！\n主题: {topics_str}"
+            # 构建详细信息
+            details_lines = [f"搜索主题: {topics_str}"]
+            
+            if results:
+                details_lines.append(f"使用策略: {results.get('search_strategy_used', '未知')}")
+                details_lines.append(f"总可用论文: {results.get('total_results', paper_count)} 篇")
+                
+                # 添加前3篇论文标题
+                if papers:
+                    details_lines.append("\n📊 发现论文:")
+                    for i, paper in enumerate(papers[:3], 1):
+                        title = paper.get('title', '未知标题')
+                        if len(title) > 60:
+                            title = title[:60] + "..."
+                        arxiv_id = paper.get('arxiv_id', '')
+                        details_lines.append(f"{i}. {title} (arXiv:{arxiv_id})")
+                    
+                    if len(papers) > 3:
+                        details_lines.append(f"... 还有 {len(papers)-3} 篇")
+            
+            details_lines.append(f"\n⏰ 执行时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            details = "\n".join(details_lines)
         
-        # CI环境中显示总结信息
-        if is_ci:
-            papers_count = len(results.get('papers', []))
-            strategy_used = results.get('search_strategy_used', 'N/A')
-            print(f"📊 本次搜索总结:")
-            print(f"   🎯 策略: {strategy_used}")
-            print(f"   📄 论文数量: {papers_count}")
-            print(f"   🏷️  主题: {' AND '.join(topics)}")
+        # 创建任务
+        result = create_arxiv_task(
+            report_type="topic",
+            summary=summary,
+            details=details,
+            paper_count=paper_count
+        )
+        
+        if result.get("success"):
+            print(f"✅ 滴答清单任务创建成功!")
+            if result.get("task_id"):
+                print(f"   任务ID: {result['task_id']}")
+            if result.get("url"):
+                print(f"   任务链接: {result['url']}")
+        else:
+            print(f"❌ 滴答清单任务创建失败: {result.get('error', '未知错误')}")
             
     except Exception as e:
-        print(f"\n❌ 保存结果失败: {e}")
+        print(f"❌ 创建滴答清单任务时出错: {e}")
+
+
+def main():
+    """主函数"""
+    # 默认搜索 AI + 安全/密码学 交叉领域
+    topics = ["cs.AI", "cs.CR"]
+    results = None
+    
+    try:
+        print("🔍 基于主题的论文搜索系统")
+        print("="*50)
+        
+        # 可以通过命令行参数或者直接修改来自定义
+        import sys
+        if len(sys.argv) > 1:
+            # 支持命令行输入主题
+            topics = sys.argv[1].split(',')
+            topics = [topic.strip() for topic in topics]  # 清理空格
+        
+        print(f"📚 搜索主题: {' AND '.join(topics)}")
+        
+        # 检测是否在CI环境中运行
+        is_ci = os.getenv('GITHUB_ACTIONS') == 'true'
+        
+        if is_ci:
+            # CI环境：运行单一的智能搜索，减少输出
+            print("\n🔍 CI模式: 智能搜索最新论文")
+            results = get_topic_papers_with_smart_dates(topics, days_back=3)
+            display_search_results(results, limit=10)
+        else:
+            # 本地环境：运行完整的测试模式
+            print("\n🔍 测试1: 智能搜索最近3天的论文")
+            results1 = get_topic_papers_with_smart_dates(topics, days_back=3)
+            display_search_results(results1, limit=5)
+            
+            print("\n\n🔍 测试2: 不限日期搜索（获取最新50篇）")
+            results2 = fetch_papers_by_topic(topics, date_from=None, date_to=None)
+            display_search_results(results2, limit=10)
+            
+            results = results2 if results2['papers'] else results1
+        
+        # 创建滴答清单任务
+        create_topic_dida_task(topics, results)
+        
+        # 保存最新的结果到文件
+        output_file = f"reports/topic_papers_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+        try:
+            os.makedirs("reports", exist_ok=True)
+            
+            with open(output_file, 'w', encoding='utf-8') as f:
+                json.dump(results, f, ensure_ascii=False, indent=2)
+            print(f"\n💾 结果已保存到: {output_file}")
+            
+            # CI环境中显示总结信息
+            if os.getenv('GITHUB_ACTIONS') == 'true':
+                papers_count = len(results.get('papers', []))
+                strategy_used = results.get('search_strategy_used', 'N/A')
+                print(f"📊 本次搜索总结:")
+                print(f"   🎯 策略: {strategy_used}")
+                print(f"   📄 论文数量: {papers_count}")
+                print(f"   🏷️  主题: {' AND '.join(topics)}")
+                
+        except Exception as e:
+            print(f"\n❌ 保存结果失败: {e}")
+            
+    except Exception as e:
+        print(f"❌ 程序执行出错: {e}")
+        import traceback
+        traceback.print_exc()
+        # 创建错误记录任务
+        create_topic_dida_task(topics, results, error=str(e))
 
 
 if __name__ == "__main__":

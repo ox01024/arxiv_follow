@@ -18,4 +18,29 @@ DISPLAY_LIMIT = 10
 DEFAULT_DAYS_BACK = 3
 
 # 搜索结果保存目录
-REPORTS_DIR = "reports" 
+REPORTS_DIR = "reports"
+
+# 滴答清单API配置
+DIDA_API_CONFIG = {
+    # 是否启用滴答清单集成
+    "enabled": True,
+    
+    # API基础URL
+    "base_url": "https://api.dida365.com/open/v1",
+    
+    # 默认项目ID（收集箱）
+    "default_project_id": "inbox",
+    
+    # 任务标签前缀
+    "tag_prefix": "arxiv",
+    
+    # 任务优先级映射
+    "priority_mapping": {
+        "no_papers": 0,    # 无论文时优先级
+        "has_papers": 1,   # 有论文时优先级
+        "many_papers": 2   # 论文较多时优先级（>=10篇）
+    },
+    
+    # 论文数量阈值
+    "many_papers_threshold": 10
+} 

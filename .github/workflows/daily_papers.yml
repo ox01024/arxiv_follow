@@ -51,6 +51,7 @@ jobs:
         uv run python daily_papers.py
       env:
         TZ: Asia/Shanghai  # 设置时区为中国时间
+        DIDA_ACCESS_TOKEN: ${{ secrets.DIDA_ACCESS_TOKEN }}
     
     - name: 📊 保存运行日志
       if: always()
