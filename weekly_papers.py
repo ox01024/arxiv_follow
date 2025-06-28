@@ -11,13 +11,15 @@ from datetime import datetime, timedelta
 import re
 from urllib.parse import urlencode
 
-# 导入滴答清单集成
+# 导入滴答清单集成和配置
 try:
     from dida_integration import create_arxiv_task
+    from config import DIDA_API_CONFIG
 except ImportError:
     print("⚠️ 无法导入滴答清单集成模块，相关功能将被禁用")
     def create_arxiv_task(*args, **kwargs):
         return {"success": False, "error": "模块未导入"}
+    DIDA_API_CONFIG = {"enable_bilingual": False}
 
 
 def fetch_researchers_from_tsv(url: str) -> List[Dict[str, Any]]:
@@ -533,12 +535,14 @@ def create_weekly_dida_task(researchers: List[Dict[str, Any]],
             details_lines.append(f"\n🤖 *由 ArXiv Follow 系统自动生成*")
             details = "\n".join(details_lines)
         
-        # 创建任务
+        # 创建任务（支持双语翻译）
+        bilingual_enabled = DIDA_API_CONFIG.get("enable_bilingual", False)
         result = create_arxiv_task(
             report_type="weekly",
             summary=summary,
             details=details,
-            paper_count=total_papers
+            paper_count=total_papers,
+            bilingual=bilingual_enabled
         )
         
         if result.get("success"):

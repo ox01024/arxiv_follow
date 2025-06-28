@@ -1,2 +1,25 @@
+# Python 字节码文件
 *.pyc
+__pycache__/
+*.pyo
+*.pyd
+
+# 报告和输出文件
 reports/*
+*.json
+
+# 日志文件
+*.log
+
+# 临时文件
+*.tmp
+*.cache
+.DS_Store
+
+# IDE 文件
+.vscode/
+.idea/
+
+# 环境变量文件
+.env
+.env.local

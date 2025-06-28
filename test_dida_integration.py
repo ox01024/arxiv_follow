@@ -17,8 +17,9 @@ try:
         create_arxiv_task, 
         test_dida_connection
     )
+    from translation_service import test_translation_service
 except ImportError as e:
-    print(f"❌ 导入滴答清单集成模块失败: {e}")
+    print(f"❌ 导入模块失败: {e}")
     sys.exit(1)
 
 
@@ -123,6 +124,59 @@ def test_arxiv_task_creation():
     return success_count == 3
 
 
+def test_bilingual_task_creation():
+    """测试双语翻译任务创建"""
+    print("\n🧪 测试4: 双语翻译任务创建测试")
+    print("-" * 40)
+    
+    # 检查是否有翻译服务API密钥
+    try:
+        translation_available = test_translation_service()
+    except:
+        print("⚠️ 翻译服务模块不可用，跳过双语测试")
+        return True
+    
+    if not translation_available:
+        print("⚠️ 翻译服务API密钥未配置，跳过双语测试")
+        print("💡 设置 OPEN_ROUTE_API_KEY 环境变量以启用双语翻译测试")
+        return True
+    
+    # 测试双语任务创建
+    print("🌐 测试双语任务创建...")
+    result = create_arxiv_task(
+        report_type="daily",
+        summary="今日发现2篇新论文！",
+        details="""监控了3位研究者
+
+📊 论文分布:
+• 张三: 1篇
+  1. Deep Learning Approaches for Cybersecurity
+• 李四: 1篇  
+  1. Federated Learning Privacy Protection
+
+⏰ 执行时间: 2025-01-15 09:00:15
+🤖 由 ArXiv Follow 系统自动生成""",
+        paper_count=2,
+        bilingual=True
+    )
+    
+    if result.get("success"):
+        print("✅ 双语任务创建成功")
+        if result.get("translation_success"):
+            print(f"✅ 翻译成功，使用模型: {result.get('model_used')}")
+        else:
+            print(f"⚠️ 翻译失败，但任务创建成功: {result.get('translation_error')}")
+        
+        if result.get("task_id"):
+            print(f"   任务ID: {result['task_id']}")
+        if result.get("url"):
+            print(f"   任务链接: {result['url']}")
+        return True
+    else:
+        print(f"❌ 双语任务创建失败: {result.get('error')}")
+        return False
+
+
 def test_error_handling():
     """测试错误处理"""
     print("\n🧪 测试4: 错误处理测试")
@@ -170,11 +224,12 @@ def main():
     if access_token:
         test_results.append(test_simple_task_creation())
         test_results.append(test_arxiv_task_creation())
+        test_results.append(test_bilingual_task_creation())
     else:
         print("\n⏭️  跳过任务创建测试（需要access token）")
-        test_results.extend([False, False])
+        test_results.extend([False, False, False])
     
-    # 测试4: 错误处理
+    # 测试5: 错误处理
     test_results.append(test_error_handling())
     
     # 测试结果汇总
@@ -186,6 +241,7 @@ def main():
         "基本API连接测试",
         "简单任务创建测试", 
         "ArXiv任务创建测试",
+        "双语翻译任务创建测试",
         "错误处理测试"
     ]
     

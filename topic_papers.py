@@ -12,13 +12,15 @@ import re
 from urllib.parse import urlencode
 import json
 
-# 导入滴答清单集成
+# 导入滴答清单集成和配置
 try:
     from dida_integration import create_arxiv_task
+    from config import DIDA_API_CONFIG
 except ImportError:
     print("⚠️ 无法导入滴答清单集成模块，相关功能将被禁用")
     def create_arxiv_task(*args, **kwargs):
         return {"success": False, "error": "模块未导入"}
+    DIDA_API_CONFIG = {"enable_bilingual": False}
 
 
 def build_topic_search_url(
@@ -504,12 +506,14 @@ def create_topic_dida_task(topics: List[str],
             details_lines.append(f"\n🤖 *由 ArXiv Follow 系统自动生成*")
             details = "\n".join(details_lines)
         
-        # 创建任务
+        # 创建任务（支持双语翻译）
+        bilingual_enabled = DIDA_API_CONFIG.get("enable_bilingual", False)
         result = create_arxiv_task(
             report_type="topic",
             summary=summary,
             details=details,
-            paper_count=paper_count
+            paper_count=paper_count,
+            bilingual=bilingual_enabled
         )
         
         if result.get("success"):

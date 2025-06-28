@@ -1,6 +1,6 @@
 """
 滴答清单API集成模块
-支持OAuth认证和任务创建功能
+支持OAuth认证和任务创建功能，集成LLM翻译服务
 """
 
 import httpx
@@ -9,6 +9,14 @@ import json
 from datetime import datetime
 from typing import Dict, Any, Optional, List
 import logging
+
+# 导入翻译服务
+try:
+    from translation_service import translate_arxiv_task
+except ImportError:
+    logger.warning("无法导入翻译服务模块，翻译功能将被禁用")
+    def translate_arxiv_task(*args, **kwargs):
+        return {"success": False, "error": "翻译模块未导入"}
 
 # 配置日志
 logging.basicConfig(level=logging.INFO)
@@ -120,7 +128,8 @@ class DidaIntegration:
                           report_type: str, 
                           summary: str, 
                           details: str = "",
-                          paper_count: int = 0) -> Dict[str, Any]:
+                          paper_count: int = 0,
+                          bilingual: bool = False) -> Dict[str, Any]:
         """
         创建论文监控报告任务
         
@@ -129,6 +138,7 @@ class DidaIntegration:
             summary: 报告摘要
             details: 详细内容
             paper_count: 论文数量
+            bilingual: 是否生成双语版本
             
         Returns:
             API响应结果
@@ -165,12 +175,43 @@ class DidaIntegration:
         # 设置优先级（有论文时为中等优先级）
         priority = 1 if paper_count > 0 else 0
         
-        return self.create_task(
-            title=title,
-            content=content,
+        # 如果启用双语翻译，则生成双语版本
+        final_title = title
+        final_content = content
+        translation_info = {}
+        
+        if bilingual:
+            logger.info("开始生成双语版本任务...")
+            translation_result = translate_arxiv_task(title, content, bilingual=True)
+            
+            if translation_result.get("success"):
+                final_title = translation_result['bilingual']['title']
+                final_content = translation_result['bilingual']['content']
+                translation_info = {
+                    "translation_success": True,
+                    "model_used": translation_result.get('model_used')
+                }
+                logger.info("成功生成双语版本任务")
+            else:
+                logger.warning(f"翻译失败，使用原始内容: {translation_result.get('error')}")
+                translation_info = {
+                    "translation_success": False,
+                    "translation_error": translation_result.get('error')
+                }
+        
+        # 创建任务
+        task_result = self.create_task(
+            title=final_title,
+            content=final_content,
             tags=tags,
             priority=priority
         )
+        
+        # 添加翻译信息到结果中
+        if translation_info:
+            task_result.update(translation_info)
+        
+        return task_result
     
     def get_user_info(self) -> Dict[str, Any]:
         """
@@ -235,7 +276,8 @@ dida_client = DidaIntegration()
 def create_arxiv_task(report_type: str, 
                      summary: str, 
                      details: str = "",
-                     paper_count: int = 0) -> Dict[str, Any]:
+                     paper_count: int = 0,
+                     bilingual: bool = False) -> Dict[str, Any]:
     """
     便捷函数：创建ArXiv论文监控任务
     
@@ -244,6 +286,7 @@ def create_arxiv_task(report_type: str,
         summary: 报告摘要  
         details: 详细内容
         paper_count: 论文数量
+        bilingual: 是否生成双语版本
         
     Returns:
         任务创建结果
@@ -252,7 +295,8 @@ def create_arxiv_task(report_type: str,
         report_type=report_type,
         summary=summary,
         details=details,
-        paper_count=paper_count
+        paper_count=paper_count,
+        bilingual=bilingual
     )
 
 
