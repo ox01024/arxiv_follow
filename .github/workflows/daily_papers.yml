@@ -1,0 +1,64 @@
+name: 📄 每日论文监控
+
+on:
+  # 定时执行 - 中国时间 9:00, 12:00, 22:00 (对应UTC 1:00, 4:00, 14:00)
+  schedule:
+    - cron: '0 1 * * *'   # 中国时间 09:00
+    - cron: '0 4 * * *'   # 中国时间 12:00  
+    - cron: '0 14 * * *'  # 中国时间 22:00
+  
+  # 支持手动触发
+  workflow_dispatch:
+  
+  # 推送到main分支时也触发（用于测试）
+  push:
+    branches: [ main ]
+    paths: 
+      - 'daily_papers.py'
+      - '.github/workflows/daily_papers.yml'
+
+jobs:
+  daily-monitor:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: 📥 检出代码
+      uses: actions/checkout@v4
+    
+    - name: 🐍 设置 Python 环境
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.11'
+    
+    - name: 📦 安装 UV 包管理器
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    
+    - name: ⚡ 安装依赖
+      run: |
+        uv sync
+    
+    - name: 🔍 运行每日论文监控
+      run: |
+        echo "🕐 当前时间 (UTC): $(date)"
+        echo "🕘 北京时间: $(TZ='Asia/Shanghai' date)"
+        echo "=========================================="
+        uv run python daily_papers.py
+      env:
+        TZ: Asia/Shanghai  # 设置时区为中国时间
+    
+    - name: 📊 保存运行日志
+      if: always()
+      run: |
+        mkdir -p logs
+        echo "运行时间: $(TZ='Asia/Shanghai' date)" > logs/daily_$(date +%Y%m%d_%H%M).log
+        echo "脚本: daily_papers.py" >> logs/daily_$(date +%Y%m%d_%H%M).log
+        
+    - name: 📝 上传运行日志
+      if: always()
+      uses: actions/upload-artifact@v3
+      with:
+        name: daily-logs-${{ github.run_number }}
+        path: logs/
+        retention-days: 30 
