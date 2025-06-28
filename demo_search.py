@@ -18,12 +18,24 @@ def main():
         print(f"✅ 成功找到 {len(results['papers'])} 篇论文")
         print(f"🎯 使用策略: {results['search_strategy_used']}")
         
-        # 显示前3篇
-        for i, paper in enumerate(results['papers'][:3], 1):
+        # 显示前5篇论文的详细信息
+        for i, paper in enumerate(results['papers'][:5], 1):
             title = paper.get('title', paper['arxiv_id'])
-            if len(title) > 60:
-                title = title[:60] + "..."
             print(f"  {i}. {title}")
+            
+            # 显示作者
+            if paper.get('authors'):
+                authors_str = ", ".join(paper['authors'][:2])
+                if len(paper['authors']) > 2:
+                    authors_str += f" 等{len(paper['authors'])}位作者"
+                print(f"     👥 作者: {authors_str}")
+            
+            # 显示ArXiv链接
+            if paper.get('url'):
+                print(f"     🔗 链接: {paper['url']}")
+        
+        if len(results['papers']) > 5:
+            print(f"  ... 还有 {len(results['papers'])-5} 篇论文（运行完整脚本查看全部）")
     else:
         print("❌ 未找到相关论文")
     

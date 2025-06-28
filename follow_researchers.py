@@ -360,9 +360,8 @@ def display_papers(all_papers: Dict[str, List[Dict[str, Any]]]) -> None:
                 print(f"   🌐 链接: {paper.get('url', '')}")
             
             if 'authors' in paper and paper['authors']:
-                authors_str = ", ".join(paper['authors'][:3])  # 只显示前3个作者
-                if len(paper['authors']) > 3:
-                    authors_str += f" (等 {len(paper['authors'])} 位作者)"
+                # 显示所有作者
+                authors_str = ", ".join(paper['authors'])
                 print(f"   👥 作者: {authors_str}")
             
             if 'submitted_date' in paper:
@@ -371,6 +370,15 @@ def display_papers(all_papers: Dict[str, List[Dict[str, Any]]]) -> None:
             if 'abstract' in paper and paper['abstract']:
                 abstract = paper['abstract']
                 print(f"   📝 摘要: {abstract}")
+            
+            # 显示学科分类
+            if 'subjects' in paper and paper['subjects']:
+                subjects_str = ", ".join(paper['subjects'])
+                print(f"   🏷️ 领域: {subjects_str}")
+            
+            # 显示评论信息
+            if 'comments' in paper and paper['comments']:
+                print(f"   💬 评论: {paper['comments']}")
 
 
 def display_researchers(researchers: List[Dict[str, Any]]) -> None:

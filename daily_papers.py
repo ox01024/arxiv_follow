@@ -367,9 +367,8 @@ def display_papers(all_papers: Dict[str, List[Dict[str, Any]]]) -> None:
                 print(f"   🌐 链接: {paper.get('url', '')}")
             
             if 'authors' in paper and paper['authors']:
-                authors_str = ", ".join(paper['authors'][:3])  # 只显示前3个作者
-                if len(paper['authors']) > 3:
-                    authors_str += f" (等 {len(paper['authors'])} 位作者)"
+                # 显示所有作者
+                authors_str = ", ".join(paper['authors'])
                 print(f"   👥 作者: {authors_str}")
             
             if 'submitted_date' in paper:
@@ -378,6 +377,15 @@ def display_papers(all_papers: Dict[str, List[Dict[str, Any]]]) -> None:
             if 'abstract' in paper and paper['abstract']:
                 abstract = paper['abstract']
                 print(f"   📝 摘要: {abstract}")
+            
+            # 显示学科分类
+            if 'subjects' in paper and paper['subjects']:
+                subjects_str = ", ".join(paper['subjects'])
+                print(f"   🏷️ 领域: {subjects_str}")
+            
+            # 显示评论信息
+            if 'comments' in paper and paper['comments']:
+                print(f"   💬 评论: {paper['comments']}")
 
 
 def display_researchers(researchers: List[Dict[str, Any]]) -> None:
@@ -432,33 +440,69 @@ def create_daily_dida_task(researchers: List[Dict[str, Any]],
         total_papers = sum(len(papers) for papers in all_papers.values()) if all_papers else 0
         researcher_count = len(researchers)
         
-        # 构建任务摘要
+        # 构建任务摘要（Markdown格式）
         if error:
-            summary = f"❌ 每日论文监控执行失败\n错误信息: {error}"
-            details = f"执行时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            summary = f"❌ **每日论文监控执行失败**\n\n**错误信息:** {error}"
+            details = f"⏰ **执行时间:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         elif total_papers == 0:
-            summary = f"📄 今日无新论文发现"
-            details = f"监控了 {researcher_count} 位研究者\n执行时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
+            summary = f"📄 **今日无新论文发现**"
+            details = f"👥 **监控研究者:** {researcher_count} 位\n⏰ **执行时间:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
         else:
-            summary = f"🎉 今日发现 {total_papers} 篇新论文！"
-            # 构建详细信息
-            details_lines = [f"监控了 {researcher_count} 位研究者"]
+            summary = f"🎉 **今日发现 {total_papers} 篇新论文！**"
+            # 构建详细信息（Markdown格式）
+            details_lines = [f"👥 **监控研究者:** {researcher_count} 位"]
             
-            # 添加发现论文的研究者详情
+            # 添加发现论文的研究者详情（Markdown格式）
             if all_papers:
-                details_lines.append("\n📊 论文分布:")
+                details_lines.append("\n## 📊 论文分布")
                 for author, papers in all_papers.items():
-                    details_lines.append(f"• {author}: {len(papers)} 篇")
-                    # 添加前3篇论文标题
-                    for i, paper in enumerate(papers[:3], 1):
+                    details_lines.append(f"\n### 👨‍🔬 {author} ({len(papers)} 篇)")
+                    
+                    # 显示所有论文的详细信息
+                    for i, paper in enumerate(papers, 1):
                         title = paper.get('title', '未知标题')
-                        if len(title) > 50:
-                            title = title[:50] + "..."
-                        details_lines.append(f"  {i}. {title}")
-                    if len(papers) > 3:
-                        details_lines.append(f"  ... 还有 {len(papers)-3} 篇")
+                        arxiv_id = paper.get('arxiv_id', '')
+                        url = paper.get('url', '')
+                        
+                        # 使用Markdown链接格式
+                        if url and arxiv_id:
+                            details_lines.append(f"\n**{i}. [{title}]({url})**")
+                            details_lines.append(f"📄 **arXiv:** `{arxiv_id}`")
+                        else:
+                            details_lines.append(f"\n**{i}. {title}**")
+                        
+                        # 作者信息（显示所有作者）
+                        if paper.get('authors'):
+                            authors_str = ", ".join(paper['authors'])
+                            details_lines.append(f"👥 **作者:** {authors_str}")
+                        
+                        # 摘要信息（前200字符）
+                        if paper.get('abstract'):
+                            abstract = paper['abstract']
+                            if len(abstract) > 200:
+                                abstract = abstract[:200] + "..."
+                            details_lines.append(f"📝 **摘要:** {abstract}")
+                        
+                        # 提交日期
+                        if paper.get('submitted_date'):
+                            details_lines.append(f"📅 **提交日期:** {paper['submitted_date']}")
+                        
+                        # 学科分类（显示所有分类）
+                        if paper.get('subjects'):
+                            subjects_str = ", ".join([f"`{s}`" for s in paper['subjects']])
+                            details_lines.append(f"🏷️ **领域:** {subjects_str}")
+                        
+                        # 评论信息
+                        if paper.get('comments'):
+                            comments = paper['comments']
+                            if len(comments) > 100:
+                                comments = comments[:100] + "..."
+                            details_lines.append(f"💬 **评论:** {comments}")
+                        
+                        details_lines.append("---")  # 分隔线
             
-            details_lines.append(f"\n⏰ 执行时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            details_lines.append(f"\n⏰ **执行时间:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
+            details_lines.append(f"\n🤖 *由 ArXiv Follow 系统自动生成*")
             details = "\n".join(details_lines)
         
         # 创建任务
