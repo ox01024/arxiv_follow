@@ -105,7 +105,7 @@ class ArxivCollector:
 
         except ET.ParseError as e:
             logger.error(f"Failed to parse XML response: {e}")
-            raise ValueError(f"Invalid XML response: {e}")
+            raise ValueError(f"Invalid XML response: {e}") from e
 
     def _parse_entry(self, entry: ET.Element) -> dict[str, Any] | None:
         """解析单个论文条目"""

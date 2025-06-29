@@ -64,9 +64,13 @@ class SearchFilters(BaseModel):
     @validator("date_to")
     def validate_date_range(cls, v: date | None, values: dict[str, Any]) -> date | None:
         """验证日期范围"""
-        if v and "date_from" in values and values["date_from"]:
-            if v < values["date_from"]:
-                raise ValueError("date_to must be after date_from")
+        if (
+            v
+            and "date_from" in values
+            and values["date_from"]
+            and v < values["date_from"]
+        ):
+            raise ValueError("date_to must be after date_from")
         return v
 
 
