@@ -6,10 +6,11 @@ import os
 from typing import Any
 
 # 默认模型配置
-DEFAULT_LLM_MODEL = "google/gemini-2.0-flash-001"
+DEFAULT_LLM_MODEL = "deepseek/deepseek-chat-v3-0324:free"
 
 # 支持的模型列表
 SUPPORTED_MODELS = {
+    "deepseek-chat": "deepseek/deepseek-chat-v3-0324:free",
     "gemini-flash": "google/gemini-2.0-flash-001",
     "gemini-flash-lite": "google/gemini-2.0-flash-lite-001",
     "gemini-flash-exp": "google/gemini-2.0-flash-exp",
