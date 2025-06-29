@@ -34,7 +34,7 @@ class StorageBackend(str, Enum):
     MONGODB = "mongodb"
 
 
-class APIConfig(BaseModel):
+class APIConfig(BaseSettings):
     """API配置"""
 
     # OpenRouter API (用于AI功能)
@@ -66,7 +66,7 @@ class APIConfig(BaseModel):
     # 滴答清单API配置
     dida_access_token: str | None = Field(None, description="滴答清单访问令牌")
     dida_base_url: str = Field(
-        default="https://api.dida365.com/api/v2", description="滴答清单API基础URL"
+        default="https://api.dida365.com/open/v1", description="滴答清单API基础URL"
     )
 
     # 通用HTTP配置
@@ -76,6 +76,17 @@ class APIConfig(BaseModel):
         default="ArXiv-Follow/1.0.0 (Academic Research Tool)",
         description="User-Agent字符串",
     )
+
+    class Config:
+        """Pydantic配置"""
+        env_file = ".env"
+        case_sensitive = False
+
+        # 字段映射
+        fields = {
+            "openrouter_api_key": {"env": "OPEN_ROUTE_API_KEY"},
+            "dida_access_token": {"env": "DIDA_ACCESS_TOKEN"},
+        }
 
 
 class IntegrationConfig(BaseModel):
@@ -204,12 +215,6 @@ class AppConfig(BaseSettings):
 
         # 环境变量前缀
         env_prefix = "ARXIV_FOLLOW_"
-
-        # 字段映射
-        fields = {
-            "api.openrouter_api_key": {"env": "OPEN_ROUTE_API_KEY"},
-            "api.dida_access_token": {"env": "DIDA_ACCESS_TOKEN"},
-        }
 
     @validator("storage")
     def validate_storage_config(
