@@ -102,6 +102,9 @@ jobs:
       run: uv sync --dev
 
     - name: Run unit tests
+      env:
+        OPEN_ROUTE_API_KEY: ${{ secrets.OPEN_ROUTE_API_KEY }}
+        DIDA_ACCESS_TOKEN: ${{ secrets.DIDA_ACCESS_TOKEN }}
       run: |
         uv run pytest tests/ \
           -m "not integration and not slow" \
