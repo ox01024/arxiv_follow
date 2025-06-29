@@ -3,12 +3,8 @@
 每周研究者动态汇总脚本 - 搜索特定研究者最近一周发布的论文
 """
 
-import csv
-import io
-import re
 from datetime import datetime, timedelta
 from typing import Any
-from urllib.parse import urlencode
 
 import httpx
 
@@ -16,265 +12,27 @@ import httpx
 try:
     from ..config.settings import DIDA_API_CONFIG
     from ..integrations.dida import create_arxiv_task
+    from ..services.researcher import (
+        build_arxiv_search_url,
+        fetch_researchers_from_tsv,
+        parse_arxiv_search_results,
+    )
 except ImportError:
-    print("⚠️ 无法导入滴答清单集成模块，相关功能将被禁用")
+    print("⚠️ 无法导入集成模块，相关功能将被禁用")
 
     def create_arxiv_task(*_args, **_kwargs):
         return {"success": False, "error": "模块未导入"}
 
-    DIDA_API_CONFIG = {"enable_bilingual": True}  # 修复：保持双语翻译启用
-
-
-def fetch_researchers_from_tsv(url: str) -> list[dict[str, Any]]:
-    """
-    从 TSV URL 获取研究者数据
-
-    Args:
-        url: Google Sheets TSV 导出链接
-
-    Returns:
-        研究者数据列表
-    """
-    try:
-        # 使用 httpx 获取 TSV 数据，允许重定向
-        with httpx.Client(follow_redirects=True) as client:
-            response = client.get(url)
-            response.raise_for_status()
-
-        # 解析 TSV 数据
-        tsv_content = response.text
-        print(f"获取到的原始数据:\n{tsv_content}\n")
-
-        # 使用 csv 模块解析 TSV
-        csv_reader = csv.reader(io.StringIO(tsv_content), delimiter="\t")
-
-        # 读取所有行
-        rows = list(csv_reader)
-
-        if not rows:
-            print("未找到任何数据")
-            return []
-
-        # 检查是否有标题行（通过检查第一行是否包含明显的标题词汇）
-        has_header = False
-        if rows and len(rows) > 1:
-            first_row = [cell.strip().lower() for cell in rows[0]]
-            header_indicators = [
-                "name",
-                "author",
-                "researcher",
-                "姓名",
-                "作者",
-                "研究者",
-            ]
-            has_header = any(
-                indicator in cell
-                for cell in first_row
-                for indicator in header_indicators
-            )
-
-        if has_header:
-            headers = rows[0]
-            data_rows = rows[1:]
-            print(f"检测到标题行: {headers}")
-        else:
-            headers = []
-            data_rows = rows
-            print("未检测到标题行，所有行都视为数据")
-
-        print(f"数据行数: {len(data_rows)}")
-
-        # 转换为字典列表
-        researchers = []
-        for i, row in enumerate(data_rows):
-            if any(cell.strip() for cell in row):  # 跳过空行
-                if headers and len(headers) > 1:
-                    # 如果有多个列，创建字典
-                    researcher = {}
-                    for j, header in enumerate(headers):
-                        value = row[j] if j < len(row) else ""
-                        researcher[header] = value.strip()
-                    researchers.append(researcher)
-                else:
-                    # 如果只有一列或没有标题，将每行作为研究者姓名
-                    name = " ".join(cell.strip() for cell in row if cell.strip())
-                    if name:
-                        researchers.append({"name": name, "row_index": i})
-
-        return researchers
-
-    except httpx.RequestError as e:
-        print(f"网络请求错误: {e}")
-        return []
-    except Exception as e:
-        print(f"解析数据时出错: {e}")
+    def fetch_researchers_from_tsv(*_args, **_kwargs):
         return []
 
+    def build_arxiv_search_url(*_args, **_kwargs):
+        return ""
 
-def build_arxiv_search_url(author_name: str, date_from: str, date_to: str) -> str:
-    """
-    构建 arXiv 高级搜索 URL
+    def parse_arxiv_search_results(*_args, **_kwargs):
+        return []
 
-    Args:
-        author_name: 作者姓名
-        date_from: 开始日期 (YYYY-MM-DD)
-        date_to: 结束日期 (YYYY-MM-DD)
-
-    Returns:
-        arXiv 搜索 URL
-    """
-    # 修正arXiv日期范围问题：如果开始日期和结束日期相同，将结束日期设置为第二天
-    # 因为arXiv要求 "End date must be later than start date"
-    if date_from == date_to:
-        try:
-            start_date = datetime.strptime(date_from, "%Y-%m-%d")
-            end_date = start_date + timedelta(days=1)
-            date_to = end_date.strftime("%Y-%m-%d")
-        except ValueError:
-            # 如果日期解析失败，保持原样
-            pass
-
-    base_url = "https://arxiv.org/search/advanced"
-
-    params = {
-        "advanced": "",
-        "terms-0-operator": "AND",
-        "terms-0-term": f'"{author_name}"',
-        "terms-0-field": "author",
-        "classification-computer_science": "y",
-        "classification-physics_archives": "all",
-        "classification-include_cross_list": "include",
-        "date-year": "",
-        "date-filter_by": "date_range",
-        "date-from_date": date_from,
-        "date-to_date": date_to,
-        "date-date_type": "submitted_date",
-        "abstracts": "show",
-        "size": "50",
-        "order": "-announced_date_first",
-    }
-
-    return f"{base_url}?{urlencode(params)}"
-
-
-def parse_arxiv_search_results(html_content: str) -> list[dict[str, Any]]:
-    """
-    解析 arXiv 搜索结果页面
-
-    Args:
-        html_content: HTML 内容
-
-    Returns:
-        论文列表
-    """
-    papers = []
-
-    # 检查是否有结果
-    if "Sorry, your query returned no results" in html_content:
-        return papers
-
-    # 提取结果总数
-    total_pattern = r"Showing 1–\d+ of ([\d,]+) results"
-    total_match = re.search(total_pattern, html_content)
-    total_count = 0
-    if total_match:
-        total_count = int(total_match.group(1).replace(",", ""))
-
-    # 查找论文条目 - 使用实际的HTML结构
-    paper_pattern = r'<li class="arxiv-result">(.*?)</li>'
-    paper_matches = re.findall(paper_pattern, html_content, re.DOTALL)
-
-    for match in paper_matches:
-        paper = {"total_results": total_count}
-
-        # 提取arXiv ID和URL
-        id_pattern = r'<a href="https://arxiv\.org/abs/(\d{4}\.\d{4,5})">arXiv:(\d{4}\.\d{4,5})</a>'
-        id_match = re.search(id_pattern, match)
-        if id_match:
-            paper["arxiv_id"] = id_match.group(1)
-            paper["url"] = f"https://arxiv.org/abs/{paper['arxiv_id']}"
-
-        # 提取标题
-        title_pattern = r'<p class="title is-5 mathjax"[^>]*>\s*(.*?)\s*</p>'
-        title_match = re.search(title_pattern, match, re.DOTALL)
-        if title_match:
-            title = title_match.group(1).strip()
-            # 清理HTML标签
-            title = re.sub(r"<[^>]+>", "", title)
-            title = re.sub(r"\s+", " ", title).strip()
-            if title:
-                paper["title"] = title
-
-        # 提取作者
-        authors_pattern = (
-            r'<p class="authors"[^>]*>.*?<span[^>]+>Authors:</span>(.*?)</p>'
-        )
-        authors_match = re.search(authors_pattern, match, re.DOTALL)
-        if authors_match:
-            authors_html = authors_match.group(1)
-            # 提取所有作者链接
-            author_links = re.findall(r"<a[^>]+>(.*?)</a>", authors_html)
-            if author_links:
-                authors = [
-                    re.sub(r"<[^>]+>", "", author).strip() for author in author_links
-                ]
-                authors = [author for author in authors if author]  # 过滤空字符串
-                if authors:
-                    paper["authors"] = authors
-
-        # 提取学科分类
-        subjects = []
-        subject_pattern = (
-            r'<span class="tag[^"]*"[^>]*data-tooltip="([^"]+)"[^>]*>([^<]+)</span>'
-        )
-        subject_matches = re.findall(subject_pattern, match)
-        for _tooltip, subject_code in subject_matches:
-            subjects.append(subject_code.strip())
-        if subjects:
-            paper["subjects"] = subjects
-
-        # 提取摘要 - 优先获取完整摘要
-        abstract_patterns = [
-            # 优先提取完整摘要
-            r'<span[^>]*class="[^"]*abstract-full[^"]*"[^>]*[^>]*>(.*?)</span>',
-            # 备选：普通摘要段落
-            r'<p[^>]*class="[^"]*abstract[^"]*"[^>]*>.*?<span[^>]+>Abstract[^<]*</span>:\s*(.*?)</p>',
-            # 备选：abstract-short（如果没有full版本）
-            r'<span[^>]*class="[^"]*abstract-short[^"]*"[^>]*[^>]*>(.*?)</span>',
-        ]
-
-        for pattern in abstract_patterns:
-            abstract_match = re.search(pattern, match, re.DOTALL | re.IGNORECASE)
-            if abstract_match:
-                abstract = abstract_match.group(1).strip()
-                # 清理HTML标签、链接和多余空白
-                abstract = re.sub(r"<a[^>]*>.*?</a>", "", abstract)  # 移除More/Less链接
-                abstract = re.sub(r"<[^>]+>", "", abstract)
-                abstract = re.sub(r"&hellip;.*", "", abstract)  # 移除省略号及后续内容
-                abstract = re.sub(r"\s+", " ", abstract).strip()
-                if len(abstract) > 20:  # 确保不是空的或太短的内容
-                    paper["abstract"] = abstract
-                    break
-
-        # 提取提交日期
-        submitted_pattern = r"<span[^>]+>Submitted</span>\s+([^;]+);"
-        submitted_match = re.search(submitted_pattern, match)
-        if submitted_match:
-            paper["submitted_date"] = submitted_match.group(1).strip()
-
-        # 提取评论信息
-        comments_pattern = r'<p class="comments[^"]*"[^>]*>.*?<span[^>]+>Comments:</span>\s*<span[^>]*>(.*?)</span>'
-        comments_match = re.search(comments_pattern, match, re.DOTALL)
-        if comments_match:
-            comments = re.sub(r"<[^>]+>", "", comments_match.group(1)).strip()
-            if comments:
-                paper["comments"] = comments
-
-        # 只添加至少有标题或arXiv ID的论文
-        if paper.get("title") or paper.get("arxiv_id"):
-            papers.append(paper)
-
-    return papers
+    DIDA_API_CONFIG = {"enable_bilingual": True}
 
 
 def fetch_papers_for_researcher(

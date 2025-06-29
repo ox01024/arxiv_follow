@@ -585,7 +585,12 @@ async def test_dida_connection(config: AppConfig):
     """测试滴答清单连接"""
     if not config.api.dida_access_token:
         raise Exception("滴答清单访问令牌未配置")
-    # TODO: 实际测试API连接
+
+    # 实际测试API连接
+    from ..integrations.dida import test_dida_connection as test_dida_api
+
+    if not test_dida_api():
+        raise Exception("滴答清单API连接失败")
 
 
 if __name__ == "__main__":
