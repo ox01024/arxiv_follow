@@ -72,6 +72,8 @@ test = [
 dev = [
     { name = "black" },
     { name = "mypy" },
+    { name = "pytest" },
+    { name = "pytest-cov" },
     { name = "ruff" },
 ]
 
@@ -112,6 +114,8 @@ provides-extras = ["dev", "test", "docs"]
 dev = [
     { name = "black", specifier = ">=25.1.0" },
     { name = "mypy", specifier = ">=1.16.1" },
+    { name = "pytest", specifier = ">=8.4.1" },
+    { name = "pytest-cov", specifier = ">=6.2.1" },
     { name = "ruff", specifier = ">=0.12.1" },
 ]
 

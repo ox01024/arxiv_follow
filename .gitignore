@@ -4,6 +4,19 @@ __pycache__/
 *.pyo
 *.pyd
 
+# 测试和覆盖率文件
+.coverage
+coverage.xml
+htmlcov/
+.pytest_cache/
+.tox/
+.coverage.*
+
+# 代码质量工具缓存
+.ruff_cache/
+.mypy_cache/
+.bandit/
+
 # 报告和输出文件
 reports/*
 *.json
@@ -11,10 +24,17 @@ reports/*
 # 日志文件
 *.log
 
-# 临时文件
+# 临时文件和目录
 *.tmp
 *.cache
 .DS_Store
+cache/
+data/
+
+# 构建文件
+build/
+dist/
+*.egg-info/
 
 # IDE 文件
 .vscode/
