@@ -200,13 +200,21 @@ class TestPaperAnalyzer:
         """测试生成每日总结"""
         papers_analysis = [
             {
-                "paper_info": {"title": "Paper 1", "arxiv_id": "2501.12345", "categories": ["cs.AI"]},
+                "paper_info": {
+                    "title": "Paper 1",
+                    "arxiv_id": "2501.12345",
+                    "categories": ["cs.AI"],
+                },
                 "significance_analysis": {"content": "重要论文"},
                 "importance_score": 8.5,
                 "success": True,
             },
             {
-                "paper_info": {"title": "Paper 2", "arxiv_id": "2501.12346", "categories": ["cs.LG"]},
+                "paper_info": {
+                    "title": "Paper 2",
+                    "arxiv_id": "2501.12346",
+                    "categories": ["cs.LG"],
+                },
                 "significance_analysis": {"content": "一般论文"},
                 "importance_score": 6.2,
                 "success": True,
