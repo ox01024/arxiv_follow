@@ -5,7 +5,7 @@
 
 import os
 import sys
-from unittest.mock import patch, MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -14,7 +14,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "../../"))
 
 try:
     from src.arxiv_follow.core.analyzer import PaperAnalyzer
-    from src.arxiv_follow.models.config import AppConfig, APIConfig
+    from src.arxiv_follow.models.config import APIConfig, AppConfig
 except ImportError as e:
     pytest.skip(f"论文分析器模块导入失败: {e}", allow_module_level=True)
 

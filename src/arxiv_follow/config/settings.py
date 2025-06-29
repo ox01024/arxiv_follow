@@ -2,7 +2,7 @@
 配置文件 - 存储系统配置参数
 """
 
-from .models import get_translation_config, get_analysis_config
+from .models import get_analysis_config, get_translation_config
 
 # Google Sheets TSV 导出链接
 RESEARCHERS_TSV_URL = "https://docs.google.com/spreadsheets/d/1itjnV2U-Eh0F1T0LIGuLjzIhgL9f_OD8tbkMUG-Onic/export?format=tsv&id=1itjnV2U-Eh0F1T0LIGuLjzIhgL9f_OD8tbkMUG-Onic&gid=0"

@@ -3,7 +3,7 @@
 """
 
 import os
-from typing import Dict, Any
+from typing import Any
 
 # 默认模型配置
 DEFAULT_LLM_MODEL = "google/gemini-2.0-flash-001"
@@ -44,7 +44,7 @@ def get_default_model() -> str:
     return DEFAULT_LLM_MODEL
 
 
-def get_model_config(model_name: str = None) -> Dict[str, Any]:
+def get_model_config(model_name: str = None) -> dict[str, Any]:
     """
     获取模型配置
 
@@ -63,7 +63,7 @@ def get_model_config(model_name: str = None) -> Dict[str, Any]:
     return config
 
 
-def get_translation_config() -> Dict[str, Any]:
+def get_translation_config() -> dict[str, Any]:
     """获取翻译服务配置"""
     return {
         "enabled": True,
@@ -86,7 +86,7 @@ def get_translation_config() -> Dict[str, Any]:
     }
 
 
-def get_analysis_config() -> Dict[str, Any]:
+def get_analysis_config() -> dict[str, Any]:
     """获取论文分析配置"""
     return {
         "enable_analysis": False,
