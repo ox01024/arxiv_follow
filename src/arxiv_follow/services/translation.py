@@ -1,6 +1,6 @@
 """
 LLM翻译服务模块 - 使用OpenRouter API进行中英双语翻译
-支持Gemini 2.0 Flash Lite模型，对Task信息进行智能翻译
+支持Gemini 2.0模型，对Task信息进行智能翻译
 """
 
 import json
@@ -10,6 +10,8 @@ from typing import Any
 
 from openai import OpenAI
 
+from ..config.models import get_default_model
+
 # 配置日志
 logger = logging.getLogger(__name__)
 
@@ -17,16 +19,27 @@ logger = logging.getLogger(__name__)
 class TranslationService:
     """LLM翻译服务类"""
 
-    def __init__(self, api_key: str | None = None):
+    def __init__(self, api_key: str | None = None, model: str | None = None):
         """
         初始化翻译服务客户端
 
         Args:
             api_key: OpenRouter API密钥，如果不提供会从环境变量读取
+            model: 使用的模型名称，如果不提供会使用默认模型
         """
+        from ..config.models import SUPPORTED_MODELS
+        
         self.api_key = api_key or os.getenv("OPEN_ROUTE_API_KEY")
         self.base_url = "https://openrouter.ai/api/v1"
-        self.model = "google/gemini-2.0-flash-lite-001"
+        
+        # 处理模型名称，支持别名转换
+        if model:
+            if model in SUPPORTED_MODELS:
+                self.model = SUPPORTED_MODELS[model]
+            else:
+                self.model = model
+        else:
+            self.model = get_default_model()
 
         # 初始化OpenAI客户端，配置为使用OpenRouter
         if self.api_key:

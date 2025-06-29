@@ -4,11 +4,16 @@
 定义应用配置、API配置和集成配置的数据结构。
 """
 
+from __future__ import annotations
+
+import logging
 from enum import Enum
 from typing import Any
 
 from pydantic import BaseModel, Field, validator
 from pydantic_settings import BaseSettings
+
+from ..config.models import get_default_model
 
 
 class LogLevel(str, Enum):
@@ -46,7 +51,7 @@ class APIConfig(BaseModel):
 
     @property
     def default_model(self) -> str:
-        return "gemini-2.0-flash-exp"
+        return get_default_model()
 
     # ArXiv API配置
     arxiv_base_url: str = Field(
@@ -87,11 +92,15 @@ class IntegrationConfig(BaseModel):
     default_source_language: str = Field(default="en", description="默认源语言")
     default_target_language: str = Field(default="zh", description="默认目标语言")
 
-    # AI分析
+    # AI分析 - 使用动态获取的默认模型
     ai_analysis_enabled: bool = Field(default=False, description="是否启用AI分析")
-    ai_model: str = Field(default="gemini-2.0-flash-exp", description="AI模型名称")
     ai_temperature: float = Field(default=0.3, ge=0, le=2, description="AI温度参数")
     ai_max_tokens: int = Field(default=2048, ge=1, description="AI最大令牌数")
+
+    @property 
+    def ai_model(self) -> str:
+        """获取AI模型名称"""
+        return get_default_model()
 
     # 通知配置
     notifications_enabled: bool = Field(default=True, description="是否启用通知")
