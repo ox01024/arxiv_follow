@@ -173,9 +173,11 @@ class TestPaperAnalyzer:
         )
 
         assert result["success"] is True
-        assert result["report_type"] == "comprehensive"
-        assert "report_content" in result
-        assert "analysis_components" in result
+        assert result["analysis_type"] == "comprehensive"
+        assert "paper_info" in result
+        assert "significance_analysis" in result
+        assert "technical_analysis" in result
+        assert "overall_score" in result
 
     @pytest.mark.asyncio
     async def test_analyze_multiple_papers(self, analyzer_with_key, sample_paper_data):
@@ -198,23 +200,27 @@ class TestPaperAnalyzer:
         """测试生成每日总结"""
         papers_analysis = [
             {
-                "paper_data": {"title": "Paper 1", "arxiv_id": "2501.12345"},
+                "paper_info": {"title": "Paper 1", "arxiv_id": "2501.12345", "categories": ["cs.AI"]},
                 "significance_analysis": {"content": "重要论文"},
+                "importance_score": 8.5,
                 "success": True,
             },
             {
-                "paper_data": {"title": "Paper 2", "arxiv_id": "2501.12346"},
+                "paper_info": {"title": "Paper 2", "arxiv_id": "2501.12346", "categories": ["cs.LG"]},
                 "significance_analysis": {"content": "一般论文"},
+                "importance_score": 6.2,
                 "success": True,
             },
         ]
 
         result = analyzer_with_key.generate_daily_summary(papers_analysis)
 
-        assert result["success"] is True
-        assert "summary_content" in result
-        assert "papers_count" in result
-        assert result["papers_count"] == 2
+        assert "date" in result
+        assert "total_papers" in result
+        assert "successful_analysis" in result
+        assert result["total_papers"] == 2
+        assert result["successful_analysis"] == 2
+        assert "summary_text" in result
 
     def test_error_handling_empty_paper_data(self, analyzer):
         """测试空论文数据的错误处理"""
