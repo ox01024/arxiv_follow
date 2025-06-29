@@ -88,9 +88,6 @@ def build_topic_search_url(
     return f"{base_url}?{urlencode(params)}"
 
 
-
-
-
 def fetch_papers_by_topic(
     topics: list[str],
     date_from: str | None = None,

@@ -588,6 +588,7 @@ async def test_dida_connection(config: AppConfig):
 
     # 实际测试API连接
     from ..integrations.dida import test_dida_connection as test_dida_api
+
     if not test_dida_api():
         raise Exception("滴答清单API连接失败")
 

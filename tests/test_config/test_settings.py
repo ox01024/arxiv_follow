@@ -169,8 +169,6 @@ class TestSettings:
         assert "include_significance_analysis" in report_config
         assert "generate_daily_summary" in report_config
 
-
-
     def test_analysis_mode_validity(self):
         """测试分析模式的有效性"""
         analysis_mode = PAPER_ANALYSIS_CONFIG["analysis_mode"]

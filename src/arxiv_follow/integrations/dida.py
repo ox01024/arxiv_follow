@@ -73,7 +73,7 @@ class DidaIntegration:
                     return {
                         "success": True,
                         "data": response.json() if response.content else {},
-                        "status_code": response.status_code
+                        "status_code": response.status_code,
                     }
                 else:
                     error_msg = f"HTTP {response.status_code}: {response.text}"
@@ -144,10 +144,10 @@ class DidaIntegration:
     def delete_task(self, task_id: str, project_id: str = None) -> dict[str, Any]:
         """
         删除滴答清单任务
-        
+
         ⚠️ 注意：滴答清单删除API存在问题，可能总是返回成功但实际未删除任务
         建议在API调用后手动检查任务是否真的被删除
-        
+
         根据官方API文档：DELETE /open/v1/project/{projectId}/task/{taskId}
         成功响应：200 OK 或 201 Created
         失败响应：401 Unauthorized, 403 Forbidden, 404 Not Found
@@ -168,7 +168,7 @@ class DidaIntegration:
             return {
                 "success": False,
                 "error": "删除任务需要提供project_id",
-                "task_id": task_id
+                "task_id": task_id,
             }
 
         url = f"{self.base_url}/project/{project_id}/task/{task_id}"
@@ -177,21 +177,30 @@ class DidaIntegration:
         try:
             with httpx.Client(timeout=30.0) as client:
                 response = client.delete(url, headers=self.headers)
-                
+
                 # 根据官方文档，200和201都表示成功
                 if response.status_code in [200, 201]:
-                    logger.warning(f"删除API返回成功 (状态码: {response.status_code})，但可能需要手动确认删除")
-                    logger.warning(f"请在滴答清单App中检查任务 {task_id} 是否真的被删除")
+                    logger.warning(
+                        f"删除API返回成功 (状态码: {response.status_code})，但可能需要手动确认删除"
+                    )
+                    logger.warning(
+                        f"请在滴答清单App中检查任务 {task_id} 是否真的被删除"
+                    )
                     return {
-                        "success": True, 
-                        "task_id": task_id, 
+                        "success": True,
+                        "task_id": task_id,
                         "status_code": response.status_code,
-                        "warning": "删除API可能不可靠，请手动确认删除"
+                        "warning": "删除API可能不可靠，请手动确认删除",
                     }
                 elif response.status_code == 404:
                     # 任务不存在
                     logger.info(f"任务不存在: {task_id}")
-                    return {"success": True, "task_id": task_id, "status_code": 404, "note": "任务不存在"}
+                    return {
+                        "success": True,
+                        "task_id": task_id,
+                        "status_code": 404,
+                        "note": "任务不存在",
+                    }
                 elif response.status_code == 401:
                     error_msg = "访问令牌无效或已过期"
                     logger.error(f"删除任务失败: {error_msg}")
@@ -217,7 +226,7 @@ class DidaIntegration:
     def test_connection(self) -> dict[str, Any]:
         """
         测试API连接
-        
+
         ⚠️ 注意：此方法会创建测试任务，但删除API不可靠，可能需要手动清理
 
         Returns:
@@ -230,7 +239,7 @@ class DidaIntegration:
         if not create_result.get("success"):
             return {
                 "success": False,
-                "error": f"连接测试失败: {create_result.get('error')}"
+                "error": f"连接测试失败: {create_result.get('error')}",
             }
 
         task_id = create_result.get("task_id")
@@ -241,15 +250,15 @@ class DidaIntegration:
         logger.warning("⚠️ 滴答清单删除API存在问题，可能无法自动清理测试任务")
         logger.warning(f"请在滴答清单App中手动删除测试任务，ID: {task_id}")
         logger.warning(f"任务标题: {test_title}")
-        
+
         delete_result = self.delete_task(task_id, project_id)
-        
+
         return {
             "success": True,
             "message": "API连接正常",
             "test_task_id": task_id,
             "warning": "测试任务需要手动删除",
-            "manual_cleanup_needed": True
+            "manual_cleanup_needed": True,
         }
 
     def create_report_task(
@@ -291,10 +300,12 @@ class DidaIntegration:
         if details:
             content_parts.append(f"\n\n📝 详细信息:\n{details}")
 
-        content_parts.extend([
-            f"\n⏰ 生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-            "\n🤖 由 ArXiv Follow 系统自动生成"
-        ])
+        content_parts.extend(
+            [
+                f"\n⏰ 生成时间: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                "\n🤖 由 ArXiv Follow 系统自动生成",
+            ]
+        )
         content = "".join(content_parts)
 
         # 处理双语翻译（如果启用）
@@ -308,12 +319,12 @@ class DidaIntegration:
                 final_content = translation_result["content"]
                 translation_info = {
                     "translation_success": True,
-                    "model_used": translation_result.get("model_used")
+                    "model_used": translation_result.get("model_used"),
                 }
             else:
                 translation_info = {
                     "translation_success": False,
-                    "translation_error": translation_result.get("error")
+                    "translation_error": translation_result.get("error"),
                 }
 
         # 创建任务
@@ -321,7 +332,7 @@ class DidaIntegration:
             title=final_title,
             content=final_content,
             tags=["arxiv", "论文监控", report_type],
-            priority=1 if paper_count > 0 else 0
+            priority=1 if paper_count > 0 else 0,
         )
 
         # 添加翻译信息
@@ -343,7 +354,9 @@ class DidaIntegration:
             from ..services.translation import translate_arxiv_task
 
             logger.info("开始生成智能双语版本任务...")
-            result = translate_arxiv_task(title, content, bilingual=True, smart_mode=True)
+            result = translate_arxiv_task(
+                title, content, bilingual=True, smart_mode=True
+            )
 
             if result.get("success") and "bilingual" in result:
                 bilingual_data = result["bilingual"]
@@ -354,7 +367,7 @@ class DidaIntegration:
                         "success": True,
                         "title": bilingual_data["title"],
                         "content": bilingual_data["content"],
-                        "model_used": result.get("model_used")
+                        "model_used": result.get("model_used"),
                     }
                 else:
                     return {"success": False, "error": "翻译质量异常，包含格式残留"}
@@ -373,7 +386,9 @@ class DidaIntegration:
 
         # 检查是否包含JSON格式残留
         invalid_patterns = ["```json", '"translated_']
-        return not any(pattern in title or pattern in content for pattern in invalid_patterns)
+        return not any(
+            pattern in title or pattern in content for pattern in invalid_patterns
+        )
 
 
 # 全局实例

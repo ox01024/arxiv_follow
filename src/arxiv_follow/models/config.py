@@ -79,6 +79,7 @@ class APIConfig(BaseSettings):
 
     class Config:
         """Pydantic配置"""
+
         env_file = ".env"
         case_sensitive = False
 

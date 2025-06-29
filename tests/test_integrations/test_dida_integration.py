@@ -55,7 +55,7 @@ class TestDidaIntegration:
         result = dida.create_task(
             title="🧪 简单任务创建测试（将自动删除）",
             content="这是一个测试任务，创建时间: 2025-06-29",
-            tags=["测试", "arxiv", "自动清理"]
+            tags=["测试", "arxiv", "自动清理"],
         )
 
         assert result.get("success"), f"任务创建应该成功: {result.get('error')}"
@@ -88,10 +88,9 @@ class TestDidaIntegration:
         )
         assert result1.get("success"), f"每日任务创建失败: {result1.get('error')}"
         if result1.get("task_id"):
-            created_tasks.append({
-                "task_id": result1["task_id"],
-                "project_id": result1.get("project_id")
-            })
+            created_tasks.append(
+                {"task_id": result1["task_id"], "project_id": result1.get("project_id")}
+            )
 
         # 测试每周研究者动态汇总任务
         result2 = create_arxiv_task(
@@ -102,10 +101,9 @@ class TestDidaIntegration:
         )
         assert result2.get("success"), f"每周任务创建失败: {result2.get('error')}"
         if result2.get("task_id"):
-            created_tasks.append({
-                "task_id": result2["task_id"],
-                "project_id": result2.get("project_id")
-            })
+            created_tasks.append(
+                {"task_id": result2["task_id"], "project_id": result2.get("project_id")}
+            )
 
         # 测试主题搜索任务
         result3 = create_arxiv_task(
@@ -116,10 +114,9 @@ class TestDidaIntegration:
         )
         assert result3.get("success"), f"主题任务创建失败: {result3.get('error')}"
         if result3.get("task_id"):
-            created_tasks.append({
-                "task_id": result3["task_id"],
-                "project_id": result3.get("project_id")
-            })
+            created_tasks.append(
+                {"task_id": result3["task_id"], "project_id": result3.get("project_id")}
+            )
 
         # 批量清理所有测试任务
         if created_tasks:
@@ -127,7 +124,7 @@ class TestDidaIntegration:
             deleted_count = 0
             failed_count = 0
             failed_ids = []
-            
+
             for task_info in created_tasks:
                 task_id = task_info.get("task_id")
                 project_id = task_info.get("project_id")
@@ -138,11 +135,13 @@ class TestDidaIntegration:
                     else:
                         failed_count += 1
                         failed_ids.append(task_id)
-            
+
             if failed_count == 0:
                 print(f"✅ 成功清理所有 {deleted_count} 个测试任务")
             else:
-                print(f"⚠️ 部分清理失败: 成功 {deleted_count} 个，失败 {failed_count} 个")
+                print(
+                    f"⚠️ 部分清理失败: 成功 {deleted_count} 个，失败 {failed_count} 个"
+                )
                 print(f"💡 需要手动删除的任务ID: {', '.join(failed_ids)}")
 
     def test_bilingual_task_creation(self):
@@ -204,9 +203,9 @@ def test_basic_connection():
     """测试基本API连接"""
     print("🧪 测试1: 基本API连接测试")
     print("-" * 40)
-    
+
     success = test_dida_connection()
-    
+
     if success:
         print("✅ API连接测试成功")
         return True
@@ -219,25 +218,25 @@ def test_simple_task_creation():
     """测试简单任务创建"""
     print("\n🧪 测试2: 简单任务创建测试")
     print("-" * 40)
-    
+
     dida = DidaIntegration()
-    
+
     if not dida.is_enabled():
         print("❌ 滴答清单API未启用，请设置DIDA_ACCESS_TOKEN环境变量")
         return False
-    
+
     # 创建测试任务
     result = dida.create_task(
         title="🧪 简单任务创建测试（将自动删除）",
         content="这是一个测试任务，创建时间: 2025-06-29",
-        tags=["测试", "arxiv", "自动清理"]
+        tags=["测试", "arxiv", "自动清理"],
     )
-    
+
     if result.get("success"):
         task_id = result.get("task_id")
         project_id = result.get("project_id")
         print(f"✅ 简单任务创建成功，任务ID: {task_id}")
-        
+
         # 自动清理测试任务
         cleanup_result = dida.delete_task(task_id, project_id)
         if cleanup_result.get("success"):
@@ -256,71 +255,68 @@ def test_arxiv_task_creation():
     """测试ArXiv论文监控任务创建"""
     print("\n🧪 测试3: ArXiv论文监控任务创建测试")
     print("-" * 40)
-    
+
     if not os.getenv("DIDA_ACCESS_TOKEN"):
         print("❌ 需要DIDA_ACCESS_TOKEN环境变量")
         return False
-    
+
     created_tasks = []  # 收集创建的任务信息用于清理
-    
+
     # 测试每日监控任务
     print("📄 测试每日监控任务...")
     result1 = create_arxiv_task(
         report_type="daily",
         summary="🧪 测试：今日发现3篇新论文！",
         details="监控了5位研究者\n论文分布:\n• 张三: 2篇\n• 李四: 1篇\n\n⚠️ 这是测试任务，将自动清理",
-        paper_count=3
+        paper_count=3,
     )
-    
+
     if result1.get("success"):
         print("✅ 每日监控任务创建成功")
         if result1.get("task_id"):
-            created_tasks.append({
-                "task_id": result1["task_id"],
-                "project_id": result1.get("project_id")
-            })
+            created_tasks.append(
+                {"task_id": result1["task_id"], "project_id": result1.get("project_id")}
+            )
     else:
         print(f"❌ 每日监控任务创建失败: {result1.get('error')}")
         return False
-    
+
     # 测试周报任务
     print("📚 测试周报任务...")
     result2 = create_arxiv_task(
-        report_type="weekly", 
+        report_type="weekly",
         summary="🧪 测试：本周无新论文发现",
         details="监控了5位研究者\n监控周期: 2025-01-01 至 2025-01-07\n\n⚠️ 这是测试任务，将自动清理",
-        paper_count=0
+        paper_count=0,
     )
-    
+
     if result2.get("success"):
         print("✅ 周报任务创建成功")
         if result2.get("task_id"):
-            created_tasks.append({
-                "task_id": result2["task_id"],
-                "project_id": result2.get("project_id")
-            })
+            created_tasks.append(
+                {"task_id": result2["task_id"], "project_id": result2.get("project_id")}
+            )
     else:
         print(f"❌ 周报任务创建失败: {result2.get('error')}")
-    
+
     # 测试主题搜索任务
     print("🎯 测试主题搜索任务...")
     result3 = create_arxiv_task(
         report_type="topic",
         summary="🧪 测试：主题论文搜索发现10篇论文！\n主题: cs.AI AND cs.CR",
         details="搜索主题: cs.AI AND cs.CR\n使用策略: 智能日期回退\n\n⚠️ 这是测试任务，将自动清理",
-        paper_count=10
+        paper_count=10,
     )
-    
+
     if result3.get("success"):
         print("✅ 主题搜索任务创建成功")
         if result3.get("task_id"):
-            created_tasks.append({
-                "task_id": result3["task_id"],
-                "project_id": result3.get("project_id")
-            })
+            created_tasks.append(
+                {"task_id": result3["task_id"], "project_id": result3.get("project_id")}
+            )
     else:
         print(f"❌ 主题搜索任务创建失败: {result3.get('error')}")
-    
+
     # 批量清理所有测试任务
     if created_tasks:
         print(f"\n🗑️  开始清理 {len(created_tasks)} 个测试任务...")
@@ -328,7 +324,7 @@ def test_arxiv_task_creation():
         deleted_count = 0
         failed_count = 0
         failed_ids = []
-        
+
         for task_info in created_tasks:
             task_id = task_info.get("task_id")
             project_id = task_info.get("project_id")
@@ -339,20 +335,22 @@ def test_arxiv_task_creation():
                 else:
                     failed_count += 1
                     failed_ids.append(task_id)
-        
+
         if failed_count == 0:
             print(f"✅ 成功清理所有 {deleted_count} 个测试任务")
         else:
             print(f"⚠️ 部分清理失败: 成功 {deleted_count} 个，失败 {failed_count} 个")
             print(f"💡 需要手动删除的任务ID: {', '.join(failed_ids)}")
-    
+
     # 统计成功数量
-    success_count = sum([
-        result1.get("success", False),
-        result2.get("success", False), 
-        result3.get("success", False)
-    ])
-    
+    success_count = sum(
+        [
+            result1.get("success", False),
+            result2.get("success", False),
+            result3.get("success", False),
+        ]
+    )
+
     print(f"\n📊 ArXiv任务创建测试结果: {success_count}/3 成功")
     return success_count >= 2  # 至少2个成功就算通过
 
@@ -361,22 +359,22 @@ def test_bilingual_task_creation():
     """测试双语翻译任务创建"""
     print("\n🧪 测试4: 双语翻译任务创建测试")
     print("-" * 40)
-    
+
     if not os.getenv("DIDA_ACCESS_TOKEN"):
         print("❌ 需要DIDA_ACCESS_TOKEN环境变量")
         return False
-    
+
     # 检查是否有翻译服务API密钥
     try:
         translation_available = test_translation_service()
     except:
         print("⏭️ 翻译服务模块不可用，跳过测试")
         return True  # 跳过不算失败
-    
+
     if not translation_available:
         print("⏭️ 翻译服务API密钥未配置，跳过测试")
         return True  # 跳过不算失败
-    
+
     result = create_arxiv_task(
         report_type="daily",
         summary="🧪 测试：今日研究者发布2篇新论文！",
@@ -392,10 +390,10 @@ def test_bilingual_task_creation():
         paper_count=2,
         bilingual=True,
     )
-    
+
     if result.get("success"):
         print("✅ 双语翻译任务创建成功")
-        
+
         # 自动清理双语测试任务
         task_id = result.get("task_id")
         project_id = result.get("project_id")
@@ -407,7 +405,7 @@ def test_bilingual_task_creation():
             else:
                 print(f"⚠️ 双语测试任务清理失败: {cleanup_result.get('error')}")
                 print(f"💡 请手动删除任务ID: {task_id}")
-        
+
         return True
     else:
         print(f"❌ 双语翻译任务创建失败: {result.get('error')}")
@@ -418,15 +416,14 @@ def test_error_handling():
     """测试错误处理"""
     print("\n🧪 测试5: 错误处理测试")
     print("-" * 40)
-    
+
     # 创建一个使用无效token的客户端
     invalid_dida = DidaIntegration(access_token="invalid_token_12345")
-    
+
     result = invalid_dida.create_task(
-        title="应该失败的任务",
-        content="这个任务应该因为无效token而失败"
+        title="应该失败的任务", content="这个任务应该因为无效token而失败"
     )
-    
+
     if not result.get("success"):
         print("✅ 错误处理测试成功 - 无效token正确返回失败")
         return True

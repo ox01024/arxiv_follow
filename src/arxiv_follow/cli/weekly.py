@@ -35,9 +35,6 @@ except ImportError:
     DIDA_API_CONFIG = {"enable_bilingual": True}
 
 
-
-
-
 def fetch_papers_for_researcher(
     author_name: str, date_from: str, date_to: str
 ) -> list[dict[str, Any]]:
