@@ -47,5 +47,5 @@ DIDA_API_CONFIG = {
 # LLM翻译服务配置 - 使用统一的模型配置
 TRANSLATION_CONFIG = get_translation_config()
 
-# 论文分析配置 - 使用统一的模型配置  
+# 论文分析配置 - 使用统一的模型配置
 PAPER_ANALYSIS_CONFIG = get_analysis_config()

@@ -28,10 +28,10 @@ class TranslationService:
             model: 使用的模型名称，如果不提供会使用默认模型
         """
         from ..config.models import SUPPORTED_MODELS
-        
+
         self.api_key = api_key or os.getenv("OPEN_ROUTE_API_KEY")
         self.base_url = "https://openrouter.ai/api/v1"
-        
+
         # 处理模型名称，支持别名转换
         if model:
             if model in SUPPORTED_MODELS:

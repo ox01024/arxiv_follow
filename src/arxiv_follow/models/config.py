@@ -97,7 +97,7 @@ class IntegrationConfig(BaseModel):
     ai_temperature: float = Field(default=0.3, ge=0, le=2, description="AI温度参数")
     ai_max_tokens: int = Field(default=2048, ge=1, description="AI最大令牌数")
 
-    @property 
+    @property
     def ai_model(self) -> str:
         """获取AI模型名称"""
         return get_default_model()

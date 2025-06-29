@@ -11,7 +11,7 @@ DEFAULT_LLM_MODEL = "google/gemini-2.0-flash-001"
 # 支持的模型列表
 SUPPORTED_MODELS = {
     "gemini-flash": "google/gemini-2.0-flash-001",
-    "gemini-flash-lite": "google/gemini-2.0-flash-lite-001", 
+    "gemini-flash-lite": "google/gemini-2.0-flash-lite-001",
     "gemini-flash-exp": "google/gemini-2.0-flash-exp",
     "claude-haiku": "anthropic/claude-3-haiku",
     "gpt-4o-mini": "openai/gpt-4o-mini",
@@ -26,10 +26,11 @@ MODEL_CONFIG = {
     "top_p": 0.9,
 }
 
+
 def get_default_model() -> str:
     """
     获取默认模型名称
-    
+
     支持通过环境变量 ARXIV_FOLLOW_DEFAULT_MODEL 覆盖
     """
     env_model = os.getenv("ARXIV_FOLLOW_DEFAULT_MODEL")
@@ -39,26 +40,28 @@ def get_default_model() -> str:
             return SUPPORTED_MODELS[env_model]
         # 如果是完整名称，直接返回
         return env_model
-    
+
     return DEFAULT_LLM_MODEL
+
 
 def get_model_config(model_name: str = None) -> Dict[str, Any]:
     """
     获取模型配置
-    
+
     Args:
         model_name: 模型名称，如果不提供则使用默认模型
-        
+
     Returns:
         包含模型名称和参数的配置字典
     """
     if model_name is None:
         model_name = get_default_model()
-    
+
     config = MODEL_CONFIG.copy()
     config["model"] = model_name
-    
+
     return config
+
 
 def get_translation_config() -> Dict[str, Any]:
     """获取翻译服务配置"""
@@ -70,7 +73,7 @@ def get_translation_config() -> Dict[str, Any]:
         },
         "default_settings": {
             "source_lang": "zh",
-            "target_lang": "en", 
+            "target_lang": "en",
             "bilingual_format": True,
             "preserve_emojis": True,
             "preserve_format": True,
@@ -81,6 +84,7 @@ def get_translation_config() -> Dict[str, Any]:
             "timeout_handling": "skip",
         },
     }
+
 
 def get_analysis_config() -> Dict[str, Any]:
     """获取论文分析配置"""
@@ -98,8 +102,8 @@ def get_analysis_config() -> Dict[str, Any]:
         },
         "report_config": {
             "include_technical_analysis": True,
-            "include_significance_analysis": True, 
+            "include_significance_analysis": True,
             "generate_daily_summary": True,
             "max_summary_papers": 10,
         },
-    } 
+    }

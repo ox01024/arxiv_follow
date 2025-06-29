@@ -79,7 +79,9 @@ class TestPaperAnalyzer:
         assert analyzer_with_key.is_enabled()
 
     @pytest.mark.asyncio
-    async def test_analyze_paper_significance_no_api_key(self, analyzer, sample_paper_data):
+    async def test_analyze_paper_significance_no_api_key(
+        self, analyzer, sample_paper_data
+    ):
         """测试没有API密钥时的重要性分析"""
         result = await analyzer.analyze_paper_significance(sample_paper_data)
 
@@ -89,7 +91,9 @@ class TestPaperAnalyzer:
 
     @pytest.mark.asyncio
     @patch("src.arxiv_follow.core.analyzer.PaperAnalyzer._call_llm")
-    async def test_analyze_paper_significance_success(self, mock_call_llm, analyzer_with_key, sample_paper_data):
+    async def test_analyze_paper_significance_success(
+        self, mock_call_llm, analyzer_with_key, sample_paper_data
+    ):
         """测试成功的重要性分析"""
         # 模拟LLM响应
         mock_response = """
@@ -134,7 +138,9 @@ class TestPaperAnalyzer:
         """
         mock_call_llm.return_value = mock_response
 
-        result = await analyzer_with_key.analyze_paper_technical_details(sample_paper_data)
+        result = await analyzer_with_key.analyze_paper_technical_details(
+            sample_paper_data
+        )
 
         assert result["success"] is True
         assert result["analysis_type"] == "technical"
@@ -142,7 +148,9 @@ class TestPaperAnalyzer:
 
     @pytest.mark.asyncio
     @patch("src.arxiv_follow.core.analyzer.PaperAnalyzer._call_llm")
-    async def test_analyze_paper_llm_failure(self, mock_call_llm, analyzer_with_key, sample_paper_data):
+    async def test_analyze_paper_llm_failure(
+        self, mock_call_llm, analyzer_with_key, sample_paper_data
+    ):
         """测试LLM调用失败的情况"""
         mock_call_llm.return_value = None
 
@@ -160,7 +168,9 @@ class TestPaperAnalyzer:
         # 模拟LLM响应
         mock_call_llm.return_value = "Mock comprehensive report response"
 
-        result = await analyzer_with_key.generate_comprehensive_report(sample_paper_data)
+        result = await analyzer_with_key.generate_comprehensive_report(
+            sample_paper_data
+        )
 
         assert result["success"] is True
         assert result["report_type"] == "comprehensive"
@@ -172,10 +182,14 @@ class TestPaperAnalyzer:
         """测试批量分析论文"""
         papers = [sample_paper_data, {**sample_paper_data, "arxiv_id": "2501.12346"}]
 
-        with patch.object(analyzer_with_key, "analyze_paper_significance") as mock_analyze:
+        with patch.object(
+            analyzer_with_key, "analyze_paper_significance"
+        ) as mock_analyze:
             mock_analyze.return_value = {"success": True, "content": "分析结果"}
 
-            results = await analyzer_with_key.analyze_multiple_papers(papers, mode="significance")
+            results = await analyzer_with_key.analyze_multiple_papers(
+                papers, mode="significance"
+            )
 
             assert len(results) == 2
             assert mock_analyze.call_count == 2
