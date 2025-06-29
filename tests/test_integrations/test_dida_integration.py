@@ -240,7 +240,7 @@ def test_simple_task_creation():
         # 自动清理测试任务
         cleanup_result = dida.delete_task(task_id, project_id)
         if cleanup_result.get("success"):
-            print(f"✅ 测试任务已自动清理")
+            print("✅ 测试任务已自动清理")
             return True
         else:
             print(f"⚠️ 测试任务清理失败: {cleanup_result.get('error')}")
@@ -401,7 +401,7 @@ def test_bilingual_task_creation():
             dida = DidaIntegration()
             cleanup_result = dida.delete_task(task_id, project_id)
             if cleanup_result.get("success"):
-                print(f"✅ 双语测试任务已自动清理")
+                print("✅ 双语测试任务已自动清理")
             else:
                 print(f"⚠️ 双语测试任务清理失败: {cleanup_result.get('error')}")
                 print(f"💡 请手动删除任务ID: {task_id}")

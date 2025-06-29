@@ -5,7 +5,6 @@
 
 import logging
 import os
-import time
 from datetime import datetime
 from typing import Any
 
@@ -251,7 +250,8 @@ class DidaIntegration:
         logger.warning(f"请在滴答清单App中手动删除测试任务，ID: {task_id}")
         logger.warning(f"任务标题: {test_title}")
 
-        delete_result = self.delete_task(task_id, project_id)
+        # 尝试删除但不关心结果，因为删除API不可靠
+        self.delete_task(task_id, project_id)
 
         return {
             "success": True,
