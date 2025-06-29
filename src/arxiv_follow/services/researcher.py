@@ -241,7 +241,7 @@ def parse_arxiv_search_results(html_content: str) -> list[dict[str, Any]]:
             r'<span class="tag[^"]*"[^>]*data-tooltip="([^"]+)"[^>]*>([^<]+)</span>'
         )
         subject_matches = re.findall(subject_pattern, match)
-        for tooltip, subject_code in subject_matches:
+        for _tooltip, subject_code in subject_matches:
             subjects.append(subject_code.strip())
         if subjects:
             paper["subjects"] = subjects

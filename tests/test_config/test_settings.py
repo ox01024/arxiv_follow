@@ -56,7 +56,7 @@ class TestSettings:
 
     def test_numeric_settings_types(self):
         """测试数值设置的类型"""
-        assert isinstance(REQUEST_TIMEOUT, (int, float))
+        assert isinstance(REQUEST_TIMEOUT, int | float)
         assert isinstance(DISPLAY_LIMIT, int)
         assert isinstance(DEFAULT_DAYS_BACK, int)
 
@@ -154,7 +154,7 @@ class TestSettings:
         assert isinstance(PAPER_ANALYSIS_CONFIG["enable_content_collection"], bool)
         assert isinstance(PAPER_ANALYSIS_CONFIG["analysis_mode"], str)
         assert isinstance(PAPER_ANALYSIS_CONFIG["max_papers_per_batch"], int)
-        assert isinstance(PAPER_ANALYSIS_CONFIG["collection_delay"], (int, float))
+        assert isinstance(PAPER_ANALYSIS_CONFIG["collection_delay"], int | float)
 
         # 检查LLM配置
         llm_config = PAPER_ANALYSIS_CONFIG["llm_config"]

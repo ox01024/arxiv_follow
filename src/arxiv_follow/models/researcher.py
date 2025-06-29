@@ -219,11 +219,7 @@ class Researcher(BaseModel):
             return True
 
         # 检查姓名变体
-        for variant in self.name_variants:
-            if name_lower == variant.lower():
-                return True
-
-        return False
+        return any(name_lower == variant.lower() for variant in self.name_variants)
 
     class Config:
         """Pydantic配置"""

@@ -116,16 +116,14 @@ def pytest_collection_modifyitems(config, items):
         # 检查测试名称或文档字符串中是否包含API相关关键词
         if any(
             keyword in item.name.lower() for keyword in ["api", "connection", "token"]
-        ):
-            if "api" not in [mark.name for mark in item.iter_markers()]:
-                item.add_marker(pytest.mark.api)
+        ) and "api" not in [mark.name for mark in item.iter_markers()]:
+            item.add_marker(pytest.mark.api)
 
         # 检查是否需要网络连接
         if any(
             keyword in item.name.lower() for keyword in ["fetch", "download", "request"]
-        ):
-            if "network" not in [mark.name for mark in item.iter_markers()]:
-                item.add_marker(pytest.mark.network)
+        ) and "network" not in [mark.name for mark in item.iter_markers()]:
+            item.add_marker(pytest.mark.network)
 
 
 @pytest.fixture

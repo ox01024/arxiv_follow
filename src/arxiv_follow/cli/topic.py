@@ -20,7 +20,7 @@ try:
 except ImportError:
     print("⚠️ 无法导入滴答清单集成模块，相关功能将被禁用")
 
-    def create_arxiv_task(*args, **kwargs):
+    def create_arxiv_task(*_args, **_kwargs):
         return {"success": False, "error": "模块未导入"}
 
     DIDA_API_CONFIG = {"enable_bilingual": True}  # 修复：保持双语翻译启用
@@ -156,7 +156,7 @@ def parse_arxiv_search_results(html_content: str) -> list[dict[str, Any]]:
             r'<span class="tag[^"]*"[^>]*data-tooltip="([^"]+)"[^>]*>([^<]+)</span>'
         )
         subject_matches = re.findall(subject_pattern, match)
-        for tooltip, subject_code in subject_matches:
+        for _tooltip, subject_code in subject_matches:
             subjects.append(subject_code.strip())
         if subjects:
             paper["subjects"] = subjects
@@ -248,7 +248,7 @@ def fetch_papers_by_topic(
                     "date_to": date_to,
                 }
             )
-        except:
+        except (ValueError, TypeError):
             pass
 
         # 策略3: 扩展到最近30天
@@ -262,7 +262,7 @@ def fetch_papers_by_topic(
                     "date_to": date_to,
                 }
             )
-        except:
+        except (ValueError, TypeError):
             pass
 
     # 策略4: 不限日期
@@ -417,7 +417,7 @@ def get_topic_papers_with_smart_dates(
         start_date = end_date - timedelta(days=days_back - 1)
         date_from = start_date.strftime("%Y-%m-%d")
         date_to = end_date.strftime("%Y-%m-%d")
-    except:
+    except (ValueError, TypeError):
         date_from = None
         date_to = None
 
@@ -444,7 +444,7 @@ def create_topic_dida_task(
 
         # 构建任务摘要（Markdown格式）
         topics_str = " AND ".join([f"`{topic}`" for topic in topics])
-        topics_plain = " AND ".join(topics)
+        " AND ".join(topics)
         if error:
             summary = f"❌ **主题论文搜索执行失败**\n\n**主题:** {topics_str}\n**错误信息:** {error}"
             details = f"⏰ **执行时间:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"

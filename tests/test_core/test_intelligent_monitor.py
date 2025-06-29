@@ -4,20 +4,20 @@
 """
 
 import os
-import sys
 import unittest
 from unittest.mock import patch
 
 # 导入模块
 try:
-    from arxiv_follow.core.monitor import IntelligentPaperMonitor
+    from arxiv_follow.config.settings import get_settings
     from arxiv_follow.core.analyzer import PaperAnalyzer
     from arxiv_follow.core.collector import PaperCollector
-    from arxiv_follow.config.settings import get_settings
+    from arxiv_follow.core.monitor import IntelligentPaperMonitor
 except ImportError as e:
     print(f"❌ 导入测试模块失败: {e}")
     # 在CI环境中，允许导入失败但不要退出
     import pytest
+
     pytest.skip(f"跳过测试：{e}", allow_module_level=True)
 
 
@@ -179,8 +179,8 @@ def run_integration_tests():
     # 测试配置读取
     print("\n📋 配置检查:")
     try:
-        settings = get_settings()
-        print(f"   配置加载: ✅ 成功")
+        get_settings()
+        print("   配置加载: ✅ 成功")
     except Exception as e:
         print(f"   配置加载: ❌ 失败 - {e}")
 

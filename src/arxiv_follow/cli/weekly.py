@@ -19,7 +19,7 @@ try:
 except ImportError:
     print("⚠️ 无法导入滴答清单集成模块，相关功能将被禁用")
 
-    def create_arxiv_task(*args, **kwargs):
+    def create_arxiv_task(*_args, **_kwargs):
         return {"success": False, "error": "模块未导入"}
 
     DIDA_API_CONFIG = {"enable_bilingual": True}  # 修复：保持双语翻译启用
@@ -228,7 +228,7 @@ def parse_arxiv_search_results(html_content: str) -> list[dict[str, Any]]:
             r'<span class="tag[^"]*"[^>]*data-tooltip="([^"]+)"[^>]*>([^<]+)</span>'
         )
         subject_matches = re.findall(subject_pattern, match)
-        for tooltip, subject_code in subject_matches:
+        for _tooltip, subject_code in subject_matches:
             subjects.append(subject_code.strip())
         if subjects:
             paper["subjects"] = subjects

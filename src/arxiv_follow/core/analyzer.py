@@ -152,7 +152,7 @@ class PaperAnalyzer:
                         if score_match:
                             importance_score = float(score_match.group(1))
                             break
-            except:
+            except (ValueError, AttributeError):
                 pass
 
             return {

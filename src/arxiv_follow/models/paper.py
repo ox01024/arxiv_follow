@@ -89,18 +89,14 @@ class PaperMetadata(BaseModel):
         return v
 
     @validator("arxiv_url", pre=True, always=True)
-    def generate_arxiv_url(
-        cls, v: str | None, values: dict[str, Any]
-    ) -> str | None:
+    def generate_arxiv_url(cls, v: str | None, values: dict[str, Any]) -> str | None:
         """自动生成ArXiv URL"""
         if v is None and "arxiv_id" in values:
             return f"https://arxiv.org/abs/{values['arxiv_id']}"
         return v
 
     @validator("pdf_url", pre=True, always=True)
-    def generate_pdf_url(
-        cls, v: str | None, values: dict[str, Any]
-    ) -> str | None:
+    def generate_pdf_url(cls, v: str | None, values: dict[str, Any]) -> str | None:
         """自动生成PDF URL"""
         if v is None and "arxiv_id" in values:
             return f"https://arxiv.org/pdf/{values['arxiv_id']}.pdf"
@@ -221,9 +217,7 @@ class Paper(BaseModel):
         """获取作者列表"""
         return self.metadata.authors
 
-    def get_analysis_by_type(
-        self, analysis_type: AnalysisType
-    ) -> PaperAnalysis | None:
+    def get_analysis_by_type(self, analysis_type: AnalysisType) -> PaperAnalysis | None:
         """根据类型获取分析结果"""
         for analysis in self.analyses:
             if analysis.analysis_type == analysis_type:

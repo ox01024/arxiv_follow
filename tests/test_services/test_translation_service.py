@@ -115,10 +115,10 @@ def test_smart_bilingual_translation():
      📄 **arXiv:** 2501.12345
      👥 **作者:** Zhang Wei, John Smith, Alice Brown
      📝 **摘要:** This paper presents a novel transformer-based approach for detecting network anomalies in real-time cybersecurity systems. Our method achieves superior performance compared to traditional machine learning approaches.
-     
+
 • Li Ming: 1 篇
   1. **Federated Learning with Differential Privacy for Healthcare Data**
-     📄 **arXiv:** 2501.12346  
+     📄 **arXiv:** 2501.12346
      👥 **作者:** Li Ming, Sarah Johnson, Michael Chen
      📝 **摘要:** We propose a federated learning framework that incorporates differential privacy mechanisms to protect sensitive healthcare data while maintaining model performance.
 
@@ -187,7 +187,7 @@ def test_complex_content_translation():
    - 作者: Smith, J. et al.
    - arXiv ID: 2501.12345
    - 发布时间: 2025-01-14
-   
+
 2. "Zero-Shot Learning for Network Intrusion Detection"
    - 作者: Zhang, L. & Wang, M.
    - arXiv ID: 2501.12346

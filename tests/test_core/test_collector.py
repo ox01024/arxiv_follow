@@ -41,7 +41,7 @@ class TestPaperCollector:
             <span>Deep Learning for Cybersecurity: A Survey</span>
         </h1>
         <div class="authors">
-            <a href="#">John Smith</a>, 
+            <a href="#">John Smith</a>,
             <a href="#">Alice Brown</a>
         </div>
         <blockquote class="abstract mathjax">

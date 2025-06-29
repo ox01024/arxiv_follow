@@ -62,9 +62,7 @@ class SearchFilters(BaseModel):
     max_results: int = Field(default=50, ge=1, le=1000, description="最大结果数")
 
     @validator("date_to")
-    def validate_date_range(
-        cls, v: date | None, values: dict[str, Any]
-    ) -> date | None:
+    def validate_date_range(cls, v: date | None, values: dict[str, Any]) -> date | None:
         """验证日期范围"""
         if v and "date_from" in values and values["date_from"]:
             if v < values["date_from"]:
@@ -128,7 +126,7 @@ class SearchQuery(BaseModel):
         terms.extend(self.topics)
 
         # 去重并返回
-        return list(set(term.strip().lower() for term in terms if term.strip()))
+        return list({term.strip().lower() for term in terms if term.strip()})
 
     def is_researcher_search(self) -> bool:
         """是否为研究者搜索"""

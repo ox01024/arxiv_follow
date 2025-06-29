@@ -10,19 +10,18 @@ from typing import Any
 
 import httpx
 
+# 配置日志
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
 # 导入翻译服务
 try:
     from ..services.translation import translate_arxiv_task
 except ImportError:
     logger.warning("无法导入翻译服务模块，翻译功能将被禁用")
 
-    def translate_arxiv_task(*args, **kwargs):
+    def translate_arxiv_task(*_args, **_kwargs):
         return {"success": False, "error": "翻译模块未导入"}
-
-
-# 配置日志
-logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
 
 
 class DidaIntegration:
@@ -273,7 +272,7 @@ class DidaIntegration:
                         )
                         if delete_response.status_code == 200:
                             logger.info("测试任务已自动清理")
-                    except:
+                    except Exception:
                         logger.warning("测试任务清理失败，请手动删除")
 
                     return {

@@ -82,7 +82,7 @@ class TestResearcherService:
                 <p class="title is-5 mathjax">Deep Learning for Cybersecurity</p>
                 <p class="authors">
                     <span>Authors:</span>
-                    <a href="#">John Smith</a>, 
+                    <a href="#">John Smith</a>,
                     <a href="#">Alice Brown</a>
                 </p>
             </li>
