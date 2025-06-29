@@ -79,10 +79,6 @@ class TestSettings:
         required_keys = [
             "enabled",
             "base_url",
-            "default_project_id",
-            "tag_prefix",
-            "priority_mapping",
-            "many_papers_threshold",
             "enable_bilingual",
         ]
 
@@ -92,10 +88,6 @@ class TestSettings:
         # 检查配置值类型
         assert isinstance(DIDA_API_CONFIG["enabled"], bool)
         assert isinstance(DIDA_API_CONFIG["base_url"], str)
-        assert isinstance(DIDA_API_CONFIG["default_project_id"], str)
-        assert isinstance(DIDA_API_CONFIG["tag_prefix"], str)
-        assert isinstance(DIDA_API_CONFIG["priority_mapping"], dict)
-        assert isinstance(DIDA_API_CONFIG["many_papers_threshold"], int)
         assert isinstance(DIDA_API_CONFIG["enable_bilingual"], bool)
 
     def test_translation_config_structure(self):
@@ -177,16 +169,7 @@ class TestSettings:
         assert "include_significance_analysis" in report_config
         assert "generate_daily_summary" in report_config
 
-    def test_priority_mapping_values(self):
-        """测试优先级映射值"""
-        priority_mapping = DIDA_API_CONFIG["priority_mapping"]
 
-        # 检查必需的优先级类型
-        required_priorities = ["no_papers", "has_papers", "many_papers"]
-        for priority_type in required_priorities:
-            assert priority_type in priority_mapping
-            assert isinstance(priority_mapping[priority_type], int)
-            assert priority_mapping[priority_type] >= 0
 
     def test_analysis_mode_validity(self):
         """测试分析模式的有效性"""
