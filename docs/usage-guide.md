@@ -2,315 +2,354 @@
 
 ## 🎯 系统概述
 
-ArXiv Follow 是一个自动化论文监控系统，支持三种主要功能：
-- **每日监控** - 跟踪特定研究者的最新论文
-- **周报汇总** - 生成研究者论文发布趋势报告
-- **主题搜索** - 基于研究领域的智能论文搜索
+ArXiv Follow 是一个现代化的论文监控系统，基于CLI和Python API提供强大的搜索和监控功能：
+- **智能搜索** - 支持关键词、作者、主题等多种搜索模式
+- **异步架构** - 高性能并发处理，支持大规模数据采集
+- **类型安全** - 基于Pydantic的数据模型和配置管理
+- **AI增强** - 集成LLM进行智能论文分析和推荐
+- **现代化CLI** - 基于Typer和Rich的美观命令行界面
+- **可扩展集成** - 支持滴答清单、翻译服务等第三方集成
 
-## 📋 功能详解
+## 📋 核心功能详解
 
-### 每日监控 (`daily_papers.py`)
+### 论文搜索 (`arxiv-follow search`)
 
 #### 🎯 功能说明
-- 监控配置的研究者在指定日期发布的论文
-- 支持精确日期搜索和灵活日期范围
-- 自动生成每日报告并保存
+- 支持多种搜索类型：关键词、研究者、主题、分类、混合搜索
+- 灵活的过滤条件：时间范围、分类、作者等
+- 智能结果排序和去重
+- 支持结果导出为JSON格式
 
 #### 🚀 使用方法
 ```bash
-# 默认搜索当天论文
-uv run python daily_papers.py
+# 基础关键词搜索
+arxiv-follow search "attention mechanism"
 
-# 搜索指定日期论文
-uv run python daily_papers.py --date 2025-01-15
+# 指定搜索类型和结果数量
+arxiv-follow search "neural networks" --type keyword --max 50
 
-# 搜索日期范围论文
-uv run python daily_papers.py --date-from 2025-01-10 --date-to 2025-01-15
+# 限制搜索时间范围
+arxiv-follow search "transformer" --days 7
+
+# 按特定分类搜索
+arxiv-follow search "deep learning" --categories "cs.AI,cs.LG"
+
+# 混合搜索（结合多种条件）
+arxiv-follow search "federated learning" \
+  --type hybrid \
+  --categories "cs.AI,cs.CR" \
+  --authors "Li" \
+  --days 30 \
+  --output search_results.json
 ```
 
 #### 📊 输出格式
 ```
-🔍 每日论文监控 - 获取研究者当天发布的论文
-时间: 2025-01-15 09:00:00
+🔍 正在搜索论文...
 
-找到 3 个研究者:
-==================================================
-1. 姓名: Zhang Wei
-2. 姓名: Li Ming
-3. 姓名: Wang Hao
+✅ 搜索完成
+找到 15 篇论文（共 234 篇匹配）
+搜索时间: 1250.5ms
 
-🔍 正在搜索 2025-01-15 当天发布的论文...
+                               搜索结果: attention mechanism                                
+┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓
+┃ ID            标题                                                 作者                             分类       日期        ┃
+┡━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┩
+│ 2501.12345    Attention Mechanisms in Deep Learning                Li Wei, Zhang Ming 等3人            cs.AI      2025-01-15  │
+│ 2501.12346    Self-Attention Networks for Computer Vision          Wang Hao, Liu Yang                   cs.CV      2025-01-14  │
+└──────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
-✅ 找到 2 篇新论文!
-👨‍🔬 Zhang Wei (1 篇论文):
-📄 Deep Learning Approaches for Cybersecurity
-🔗 arXiv ID: 2501.12345
-🌐 链接: https://arxiv.org/abs/2501.12345
-
-👨‍🔬 Li Ming (1 篇论文):
-📄 Federated Learning in Healthcare Applications
-🔗 arXiv ID: 2501.12346
-🌐 链接: https://arxiv.org/abs/2501.12346
+显示前20篇，共找到15篇论文
 ```
 
-### 周报汇总 (`weekly_papers.py`)
+### 研究者搜索 (`arxiv-follow authors`)
 
 #### 🎯 功能说明
-- 生成过去一周的论文发布统计
-- 分析研究者活跃度和发布趋势
-- 提供周度数据汇总
+- 按作者姓名搜索其发表的论文
+- 支持多个作者的组合搜索
+- 智能作者姓名匹配
 
 #### 🚀 使用方法
 ```bash
-# 生成默认周报（过去7天）
-uv run python weekly_papers.py
+# 搜索单个作者
+arxiv-follow authors "Geoffrey Hinton"
 
-# 生成指定周数的报告
-uv run python weekly_papers.py --weeks 2
+# 搜索多个作者（OR逻辑）
+arxiv-follow authors "Yann LeCun,Geoffrey Hinton,Yoshua Bengio" --max 50
 
-# 生成自定义日期范围报告
-uv run python weekly_papers.py --date-from 2025-01-01 --date-to 2025-01-07
+# 导出搜索结果
+arxiv-follow authors "Zhang Wei" --output zhang_papers.json
 ```
 
-#### 📊 输出内容
-- 总论文数量统计
-- 各研究者发布数量排名
-- 日期分布分析
-- 热门研究方向识别
-
-### 研究者跟踪 (`follow_researchers.py`)
+### 主题搜索 (`arxiv-follow topics`)
 
 #### 🎯 功能说明
-- 获取和管理研究者列表
-- 验证研究者姓名格式
-- 支持本地和远程数据源
+- 按ArXiv分类主题搜索论文
+- 支持跨领域搜索（AND逻辑）
+- 时间范围过滤
 
 #### 🚀 使用方法
 ```bash
-# 查看研究者列表
-uv run python follow_researchers.py --list
+# 搜索AI领域论文
+arxiv-follow topics "cs.AI" --days 7
 
-# 验证研究者格式
-uv run python follow_researchers.py --validate
+# 跨领域搜索（AI+安全）
+arxiv-follow topics "cs.AI,cs.CR" --days 14 --max 100
 
-# 搜索特定研究者
-uv run python follow_researchers.py --search "Zhang Wei"
+# 计算机视觉最新论文
+arxiv-follow topics "cs.CV" --days 3 --output cv_papers.json
+```
+
+### 最近论文 (`arxiv-follow recent`)
+
+#### 🎯 功能说明
+- 获取最近发布的论文
+- 按默认主题或自定义主题过滤
+- 快速了解最新研究动态
+
+#### 🚀 使用方法
+```bash
+# 获取最近3天的论文（使用默认主题）
+arxiv-follow recent
+
+# 指定主题和时间范围
+arxiv-follow recent --days 7 --topics "cs.AI,cs.LG"
+
+# 大量数据获取
+arxiv-follow recent --days 14 --max 200 --output recent_papers.json
 ```
 
 ## 🔧 配置管理
 
-### 配置文件 (`config.py`)
+### 配置系统概述
 
-系统配置集中在 `config.py` 文件中：
+系统使用现代化的Pydantic Settings配置管理，支持：
+- **环境变量** - 使用 `ARXIV_FOLLOW_` 前缀
+- **.env文件** - 本地开发环境配置
+- **嵌套配置** - 分层配置结构
+- **类型验证** - 自动类型检查和验证
 
-```python
-# Google Sheets TSV 导出链接
-RESEARCHERS_TSV_URL = "https://docs.google.com/..."
-
-# 默认搜索主题
-DEFAULT_TOPICS = ["cs.AI", "cs.CR"]
-
-# HTTP请求超时时间（秒）
-REQUEST_TIMEOUT = 30.0
-
-# 滴答清单API配置
-DIDA_API_CONFIG = {
-    "enabled": True,
-    "base_url": "https://api.dida365.com/open/v1",
-    "default_project_id": "inbox",
-    # ... 更多配置项
-}
-```
-
-### 环境变量支持
-
-系统支持通过环境变量覆盖配置：
+### 查看当前配置
 
 ```bash
-# 滴答清单访问令牌
-export DIDA_ACCESS_TOKEN="your_token_here"
+# 查看基本配置
+arxiv-follow config
 
-# 请求超时时间
-export REQUEST_TIMEOUT="60.0"
+# 查看包含敏感信息的完整配置
+arxiv-follow config --show-sensitive
 
-# 显示更多调试信息
-export DEBUG="true"
+# 测试配置有效性
+arxiv-follow test
 ```
 
-### 研究者列表管理
+### 环境变量配置
 
-#### 数据源配置
-研究者列表存储在 Google Sheets 中：
-- **格式**: TSV (制表符分隔)
-- **结构**: 每行一个研究者姓名，无标题行
-- **编码**: UTF-8
-- **链接**: [配置链接](https://docs.google.com/spreadsheets/d/1itjnV2U-Eh0F1T0LIGuLjzIhgL9f_OD8tbkMUG-Onic)
+#### API配置
+```bash
+# OpenRouter API（用于AI功能）
+export ARXIV_FOLLOW_API__OPENROUTER_API_KEY="your_openrouter_key"
 
-#### 添加研究者
-1. 打开 Google Sheets 链接
-2. 在新行中输入研究者姓名
-3. 确保姓名拼写与 arXiv 上一致
-4. 保存后系统自动生效
+# 滴答清单API
+export ARXIV_FOLLOW_API__DIDA_ACCESS_TOKEN="your_dida_token"
 
-#### 姓名格式要求
-- 使用标准英文拼写
-- 格式：`First Last` 或 `First Middle Last`
-- 避免特殊字符和缩写
-- 注意大小写准确性
+# HTTP设置
+export ARXIV_FOLLOW_API__HTTP_TIMEOUT=30
+export ARXIV_FOLLOW_API__HTTP_RETRIES=3
+```
+
+#### 功能开关
+```bash
+# AI分析功能
+export ARXIV_FOLLOW_INTEGRATIONS__AI_ANALYSIS_ENABLED=true
+
+# 滴答清单集成
+export ARXIV_FOLLOW_INTEGRATIONS__DIDA_ENABLED=true
+
+# 翻译服务
+export ARXIV_FOLLOW_INTEGRATIONS__TRANSLATION_ENABLED=true
+```
+
+#### 监控配置
+```bash
+# 默认搜索主题
+export ARXIV_FOLLOW_MONITORING__DEFAULT_SEARCH_TOPICS=["cs.AI","cs.CR"]
+
+# 检查间隔
+export ARXIV_FOLLOW_MONITORING__CHECK_INTERVAL_HOURS=6
+
+# 每次检查最大论文数
+export ARXIV_FOLLOW_MONITORING__MAX_PAPERS_PER_CHECK=100
+```
+
+#### 存储配置
+```bash
+# 数据目录
+export ARXIV_FOLLOW_STORAGE__DATA_DIR="./data"
+export ARXIV_FOLLOW_STORAGE__OUTPUT_DIR="./reports"
+
+# 缓存设置
+export ARXIV_FOLLOW_STORAGE__ENABLE_CACHE=true
+export ARXIV_FOLLOW_STORAGE__CACHE_TTL_SECONDS=3600
+```
+
+### .env文件配置
+
+创建 `.env` 文件进行本地配置：
+
+```ini
+# .env
+# 基础设置
+ARXIV_FOLLOW_DEBUG=false
+ARXIV_FOLLOW_LOG_LEVEL=INFO
+
+# API密钥
+ARXIV_FOLLOW_API__OPENROUTER_API_KEY=your_openrouter_key
+ARXIV_FOLLOW_API__DIDA_ACCESS_TOKEN=your_dida_token
+
+# 功能开关
+ARXIV_FOLLOW_INTEGRATIONS__AI_ANALYSIS_ENABLED=true
+ARXIV_FOLLOW_INTEGRATIONS__DIDA_ENABLED=false
+ARXIV_FOLLOW_INTEGRATIONS__TRANSLATION_ENABLED=true
+
+# 存储配置
+ARXIV_FOLLOW_STORAGE__DATA_DIR=./data
+ARXIV_FOLLOW_STORAGE__OUTPUT_DIR=./reports
+ARXIV_FOLLOW_STORAGE__ENABLE_CACHE=true
+
+# 监控设置
+ARXIV_FOLLOW_MONITORING__DEFAULT_SEARCH_TOPICS=["cs.AI","cs.CR","cs.LG"]
+ARXIV_FOLLOW_MONITORING__CHECK_INTERVAL_HOURS=6
+```
 
 ## 📊 输出和报告
 
 ### 报告文件结构
 
-所有报告保存在 `reports/` 目录下：
+所有输出文件保存在配置的输出目录下（默认为 `reports/`）：
 
 ```
 reports/
-├── daily_papers_20250115_090000.json      # 每日监控结果
-├── weekly_papers_20250115_090000.json     # 周报汇总结果
-├── topic_papers_20250115_090000.json      # 主题搜索结果
-└── researcher_stats_20250115.json         # 研究者统计数据
+├── search_results_20250115_143020.json    # 搜索结果
+├── recent_papers_20250115_120000.json     # 最近论文
+├── author_search_20250115_150030.json     # 作者搜索结果
+└── topic_analysis_20250115_160000.json    # 主题分析结果
 ```
 
-### JSON 格式说明
+### JSON 输出格式
 
-#### 每日监控报告
+#### 标准搜索结果格式
 ```json
 {
-    "report_type": "daily",
-    "search_date": "2025-01-15",
-    "execution_time": "2025-01-15T09:00:00",
-    "researchers": [
-        {
-            "name": "Zhang Wei",
-            "papers_found": 1,
-            "papers": [
-                {
-                    "title": "Deep Learning Approaches...",
-                    "arxiv_id": "2501.12345",
-                    "authors": ["Zhang Wei", "Li Ming"],
-                    "abstract": "This paper presents...",
-                    "url": "https://arxiv.org/abs/2501.12345",
-                    "submitted_date": "2025-01-15"
-                }
-            ]
+    "query": {
+        "query_id": "search_20250115_143020_a1b2c3d4",
+        "search_type": "keyword",
+        "query_text": "attention mechanism",
+        "topics": ["cs.AI"],
+        "filters": {
+            "max_results": 20,
+            "days_back": 7
         }
-    ],
-    "summary": {
-        "total_papers": 2,
-        "active_researchers": 2,
-        "total_researchers": 10
-    }
-}
-```
-
-#### 主题搜索报告
-```json
-{
-    "report_type": "topic",
-    "search_topics": ["cs.AI", "cs.CR"],
-    "search_strategy_used": "exact_date_range",
-    "date_range": {
-        "from": "2025-01-13",
-        "to": "2025-01-15"
     },
     "papers": [
         {
-            "title": "AI-Powered Cybersecurity...",
-            "arxiv_id": "2501.12347",
-            "authors": ["John Doe", "Jane Smith"],
-            "categories": ["cs.AI", "cs.CR"],
-            "abstract": "This research explores...",
-            "url": "https://arxiv.org/abs/2501.12347"
+            "arxiv_id": "2501.12345",
+            "title": "Attention Mechanisms in Deep Learning",
+            "authors": ["Li Wei", "Zhang Ming", "Wang Hao"],
+            "abstract": "This paper presents a comprehensive...",
+            "url": "https://arxiv.org/abs/2501.12345",
+            "pdf_url": "https://arxiv.org/pdf/2501.12345.pdf",
+            "submitted_date": "2025-01-15",
+            "primary_category": "cs.AI",
+            "categories": ["cs.AI", "cs.LG"],
+            "comments": "18 pages, 5 figures",
+            "journal_ref": null
         }
     ],
-    "search_attempts": [
-        {
-            "strategy": "exact_date_range",
-            "date_from": "2025-01-13", 
-            "date_to": "2025-01-15",
-            "result_count": 5,
-            "success": true
-        }
-    ],
-    "summary": {
-        "total_papers": 5,
-        "strategies_tried": 1,
-        "final_strategy": "exact_date_range"
-    }
-}
+    "metrics": {
+        "total_found": 234,
+        "total_returned": 15,
+        "search_time_ms": 1250.5,
+        "success": true
+    },
+         "timestamp": "2025-01-15T14:30:20.123456",
+     "success": true
+ }
+ ```
+
+## 🎯 搜索技巧和最佳实践
+
+### 搜索类型选择指南
+
+- **keyword** - 适合概念性搜索（如 "attention mechanism"）
+- **researcher** - 适合跟踪特定作者的工作
+- **topic** - 适合按学科分类浏览（如 "cs.AI"）
+- **hybrid** - 结合多种条件的复杂搜索
+
+### 提高搜索效果的技巧
+
+```bash
+# 使用引号进行精确匹配
+arxiv-follow search '"neural machine translation"'
+
+# 组合多个关键词
+arxiv-follow search "transformer attention" --type keyword
+
+# 限制时间范围提高相关性
+arxiv-follow search "federated learning" --days 30
+
+# 使用分类过滤减少噪音
+arxiv-follow search "privacy" --categories "cs.CR,cs.AI"
 ```
 
-## 🔍 搜索技巧
+### 常用ArXiv分类
 
-### 姓名搜索优化
-1. **精确匹配**: 使用完整姓名获得最准确结果
-2. **通用拼写**: 使用最常见的英文拼写形式
-3. **避免缩写**: 尽量使用完整姓名而非缩写
-4. **验证结果**: 检查返回的论文作者是否匹配
+- **cs.AI** - 人工智能
+- **cs.LG** - 机器学习  
+- **cs.CV** - 计算机视觉
+- **cs.CL** - 计算语言学
+- **cs.CR** - 密码学与安全
+- **cs.RO** - 机器人学
+- **cs.DB** - 数据库
+- **cs.DC** - 分布式计算
 
-### 日期范围策略
-1. **精确日期**: 搜索特定日期的论文
-2. **灵活范围**: 使用日期范围增加结果
-3. **回退策略**: 自动扩展搜索范围
-4. **时区考虑**: 注意 arXiv 使用UTC时间
+## ❓ 常见问题解答
 
-### 性能优化
-1. **批量处理**: 避免过于频繁的API调用
-2. **缓存结果**: 重复搜索时使用缓存
-3. **并发控制**: 控制并发请求数量
-4. **错误重试**: 网络错误时自动重试
+### Q: 如何提高搜索速度？
+A: 
+- 减少搜索时间范围（使用 `--days` 参数）
+- 限制结果数量（使用 `--max` 参数）
+- 启用缓存功能（配置中设置）
 
-## 🚨 常见问题
+### Q: 搜索结果为空怎么办？
+A:
+- 检查关键词拼写
+- 扩大时间范围
+- 尝试不同的搜索类型
+- 使用更宽泛的关键词
 
-### 搜索无结果
-**问题**: 搜索特定研究者但没有找到论文
-**解决方案**:
-1. 检查姓名拼写是否正确
-2. 确认该研究者在指定日期是否有论文发布
-3. 尝试扩大搜索日期范围
-4. 验证研究者列表配置
+### Q: 如何批量处理搜索结果？
+A:
+```bash
+# 导出为JSON文件
+arxiv-follow search "deep learning" --output results.json
 
-### 网络连接问题
-**问题**: 无法访问 arXiv 或 Google Sheets
-**解决方案**:
-1. 检查网络连接状态
-2. 确认代理设置正确
-3. 增加请求超时时间
-4. 检查防火墙设置
+# 使用Python API处理
+python -c "
+import json
+import arxiv_follow
 
-### 数据格式错误
-**问题**: JSON 报告格式异常或乱码
-**解决方案**:
-1. 确认文件编码为 UTF-8
-2. 检查特殊字符处理
-3. 验证 JSON 格式有效性
-4. 检查磁盘空间是否充足
+result = arxiv_follow.search('transformer', max_results=100)
+with open('papers.json', 'w') as f:
+    json.dump(result, f, indent=2)
+"
+```
 
-### 权限问题
-**问题**: 无法创建报告文件或访问配置
-**解决方案**:
-1. 检查 `reports/` 目录权限
-2. 确认运行用户有写入权限
-3. 验证 Google Sheets 链接可访问
-4. 检查环境变量设置
+### Q: 配置文件在哪里？
+A: 系统使用环境变量和 `.env` 文件进行配置，不依赖固定的配置文件位置。可以通过 `arxiv-follow config` 查看当前配置。
 
-## 💡 最佳实践
+## 🔗 相关文档
 
-### 定期监控
-1. 设置每日定时运行
-2. 配置异常情况通知
-3. 定期检查研究者列表
-4. 备份重要监控结果
-
-### 数据管理
-1. 定期清理旧报告文件
-2. 建立报告归档策略
-3. 监控磁盘空间使用
-4. 备份配置文件
-
-### 系统维护
-1. 定期更新依赖包
-2. 监控 API 限制情况
-3. 检查错误日志
-4. 测试备份恢复流程 
+- [主题搜索专题](topic-search.md) - 深入了解主题搜索功能
+- [智能监控指南](intelligent-monitoring-guide.md) - AI功能配置和使用
+- [滴答清单集成](dida-integration.md) - 任务管理集成
+- [翻译指南](translation-guide.md) - 双语翻译功能 

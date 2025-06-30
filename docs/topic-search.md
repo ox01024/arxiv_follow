@@ -25,40 +25,40 @@
 ### 基础搜索
 
 ```bash
-# 默认搜索 (cs.AI + cs.CR)
-uv run python topic_papers.py
+# 默认搜索 (使用配置的默认主题)
+arxiv-follow topics "cs.AI,cs.CR"
 
-# 查看演示
-uv run python demo_search.py
+# 查看最近AI论文
+arxiv-follow topics "cs.AI" --days 3
 ```
 
 ### 自定义主题搜索
 
 ```bash
 # AI + 机器学习
-uv run python topic_papers.py "cs.AI,cs.LG"
+arxiv-follow topics "cs.AI,cs.LG"
 
 # 安全 + 网络
-uv run python topic_papers.py "cs.CR,cs.NI"
+arxiv-follow topics "cs.CR,cs.NI"
 
 # AI + 计算机视觉
-uv run python topic_papers.py "cs.AI,cs.CV"
+arxiv-follow topics "cs.AI,cs.CV"
 
 # 数据库 + 信息检索
-uv run python topic_papers.py "cs.DB,cs.IR"
+arxiv-follow topics "cs.DB,cs.IR"
 ```
 
 ### 高级参数
 
 ```bash
-# 指定搜索天数
-uv run python topic_papers.py "cs.AI,cs.LG" --days 7
+# 指定搜索天数和结果数量
+arxiv-follow topics "cs.AI,cs.LG" --days 7 --max 50
 
-# 指定具体日期范围
-uv run python topic_papers.py "cs.AI,cs.LG" --date-from 2025-01-10 --date-to 2025-01-15
+# 导出搜索结果
+arxiv-follow topics "cs.AI,cs.LG" --days 14 --output ai_ml_papers.json
 
-# CI模式 (简化输出)
-uv run python topic_papers.py "cs.AI,cs.LG" --ci-mode
+# 大规模数据获取
+arxiv-follow topics "cs.AI,cs.CR" --days 30 --max 200
 ```
 
 ## 🎨 热门主题组合
