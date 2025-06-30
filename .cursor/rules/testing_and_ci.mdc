@@ -56,6 +56,12 @@ def test_dida_integration():
 - **功能测试**: 测试完整的工作流程
 - **CI测试**: 验证GitHub Actions工作流
 
+### 测试维护原则
+- **自动清理**: 测试任务应自动清理，避免堆积
+- **清晰输出**: 提供清晰的测试输出和状态反馈
+- **错误信息**: 测试失败时提供有用的错误信息和调试线索
+- **及时更新**: 配置变更时及时更新相关测试文件
+
 ## 🔄 GitHub Actions 规范
 
 ### 工作流文件命名
@@ -63,91 +69,22 @@ def test_dida_integration():
 - 测试流程：`ci.yml` 或 `test.yml`
 - 部署流程：`deploy.yml`
 
-### 工作流结构
-```yaml
-name: "🔍 每日论文监控"
-on:
-  schedule:
-    - cron: '0 1,4,14 * * *'  # 中国时间 09:00, 12:00, 22:00
-  workflow_dispatch:
-    inputs:
-      custom_date:
-        description: '自定义搜索日期 (YYYY-MM-DD)'
-        required: false
-        type: string
-
-jobs:
-  quality_check:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - name: 设置 Python 环境
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.11'
-      
-      - name: 安装依赖
-        run: |
-          pip install uv
-          uv sync --dev
-      
-      - name: Ruff 代码检查
-        run: uv run ruff check .
-      
-      - name: Ruff 格式检查
-        run: uv run ruff format --check .
-      
-      - name: 运行测试 (TDD验证)
-        run: uv run pytest -v
-
-  monitor_papers:
-    needs: quality_check  # 代码质量检查通过后才执行
-    runs-on: ubuntu-latest
-    steps:
-      # ... 实际业务逻辑步骤
-```
+### 工作流原则
+- 包含质量检查和业务逻辑两个阶段
+- 支持定时执行和手动触发
+- 中国时区适配：UTC 01:00, 04:00, 14:00 对应中国时间 09:00, 12:00, 22:00
 
 ### 环境变量管理
 - 敏感信息使用 GitHub Secrets
 - 配置变量使用 GitHub Variables
 - 本地开发支持 `.env` 文件
-- 提供默认值和fallback
-
-```yaml
-env:
-  DIDA_ACCESS_TOKEN: ${{ secrets.DIDA_ACCESS_TOKEN }}
-  PYTHONPATH: ${{ github.workspace }}
-```
 
 ## 📦 依赖管理 (UV)
 
-### pyproject.toml 配置
-```toml
-[project]
-name = "arxiv-follow"
-version = "0.1.0"
-description = "ArXiv论文监控系统"
-requires-python = ">=3.11"
-dependencies = [
-    "httpx>=0.28.1",
-    # 只包含必需的依赖
-]
-
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-```
-
-### 开发依赖分离
-```toml
-[tool.uv]
-dev-dependencies = [
-    "pytest>=7.0.0",
-    "pytest-asyncio>=0.21.0",
-    "ruff>=0.1.0",
-    "mypy>=1.0.0",  # 可选类型检查
-]
-```
+### 依赖管理原则
+- 使用 uv 作为包管理器
+- 分离开发依赖和生产依赖
+- 只包含必需的依赖包
 
 ## 🔍 代码质量检查
 
@@ -156,105 +93,27 @@ dev-dependencies = [
 - **ruff format**: 代码格式化，替代black
 - 类型检查建议使用 mypy（可选）
 
-### Ruff 配置
-```toml
-[tool.ruff]
-# 目标Python版本
-target-version = "py311"
-line-length = 88
-
-# 启用的检查规则
-select = [
-    "E",   # pycodestyle errors
-    "W",   # pycodestyle warnings  
-    "F",   # pyflakes
-    "I",   # isort
-    "N",   # pep8-naming
-    "UP",  # pyupgrade
-    "B",   # flake8-bugbear
-    "C4",  # flake8-comprehensions
-    "SIM", # flake8-simplify
-]
-
-# 忽略的规则
-ignore = [
-    "E501",  # 行长度限制 (由 line-length 控制)
-    "N812",  # 小写导入别名
-]
-
-# 排除的文件和目录
-exclude = [
-    ".git",
-    ".tox",
-    "__pycache__",
-    "build",
-    "dist",
-    "venv",
-]
-
-[tool.ruff.per-file-ignores]
-# 测试文件可以有更宽松的规则
-"test_*.py" = ["N802", "N806"]
-```
+### Ruff 配置原则
+- 目标 Python 版本：3.11
+- 行长度：88字符
+- 启用主要代码检查规则（E, W, F, I, N, UP, B, C4, SIM）
+- 测试文件允许更宽松的命名规则
 
 ### 代码质量要求
 - **提交前检查**: 所有代码必须通过 `ruff check` 无错误
 - **格式化要求**: 使用 `ruff format` 进行代码格式化
 - **CI检查**: GitHub Actions中自动运行ruff检查
 
-## 🚀 部署和发布
+## 🚀 部署和监控
 
 ### 自动化执行
 - 定时任务使用 cron 表达式
-- 支持手动触发 (`workflow_dispatch`)
+- 支持手动触发
 - 错误时发送通知
-- 结果保存为 artifacts
 
-### 中国时区适配
-```yaml
-# UTC 时间转换为中国时间 (UTC+8)
-# UTC 01:00 = 中国时间 09:00
-# UTC 04:00 = 中国时间 12:00
-# UTC 14:00 = 中国时间 22:00
-schedule:
-  - cron: '0 1,4,14 * * *'
-```
+### 日志和错误处理
+- 使用中文日志信息，包含时间戳
+- 网络请求失败时实现重试机制
+- 数据解析失败时提供回退方案
 
-## 🐛 调试和监控
-
-### 日志记录
-- 使用中文日志信息
-- 包含时间戳和执行状态
-- 错误时提供详细的堆栈信息
-- CI环境优化输出格式
-
-```python
-import datetime
-
-def log_with_timestamp(message: str, level: str = "INFO"):
-    """带时间戳的日志输出"""
-    timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    print(f"[{timestamp}] {level}: {message}")
-```
-
-### 错误处理
-- 网络请求失败的重试机制
-- API限制的处理策略
-- 数据解析失败的回退方案
-- 详细的错误报告
-
-## 📊 性能优化
-
-### 网络请求优化
-- 使用连接池复用连接
-- 设置合理的超时时间
-- 实现请求去重
-- 批量处理减少API调用
-
-### 数据处理优化
-- 大数据量时使用生成器
-- 合理使用缓存机制
-- 避免重复计算
-- 内存使用监控
-
-遵循这些规范能确保项目的稳定性、可维护性和高效的开发工作流程。
+遵循这些规范能确保项目的稳定性和可维护性。
