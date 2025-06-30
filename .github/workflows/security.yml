@@ -3,8 +3,32 @@ name: Security and Code Quality
 on:
   push:
     branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/security.yml'
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'vibe_coding/**'
+      - 'reports/**'
+      - 'htmlcov/**'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/security.yml'
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'vibe_coding/**'
+      - 'reports/**'
+      - 'htmlcov/**'
   schedule:
     # 每周一次安全扫描
     - cron: '0 2 * * 1'
