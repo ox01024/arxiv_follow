@@ -3,8 +3,32 @@ name: Tests and Quality Checks
 on:
   push:
     branches: [ main, develop ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/tests.yml'
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'vibe_coding/**'
+      - 'reports/**'
+      - 'htmlcov/**'
   pull_request:
     branches: [ main ]
+    paths:
+      - 'src/**'
+      - 'tests/**'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/workflows/tests.yml'
+    paths-ignore:
+      - 'docs/**'
+      - '*.md'
+      - 'vibe_coding/**'
+      - 'reports/**'
+      - 'htmlcov/**'
 
 env:
   PYTHON_VERSION: "3.11"
