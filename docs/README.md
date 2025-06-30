@@ -35,10 +35,24 @@
 - 故障排除和调试
 
 ### [部署指南](deployment.md)
-- GitHub Actions 配置
-- 工作流详细说明
-- 时间配置和监控
-- 维护和更新流程
+- GitHub Actions 配置和自动化部署
+- 开发和测试工作流详解
+- 本地开发环境设置
+- 代码质量检查和安全扫描
+- 分支策略和发布流程
+- 监控、调试和故障排除
+
+### [模型配置指南](model-configuration-guide.md)
+- AI模型配置和选择
+- OpenRouter API集成
+- 模型参数优化
+- 成本控制策略
+
+### [CI翻译设置](ci-translation-setup.md)
+- CI环境翻译配置
+- 自动化翻译流程
+- 环境变量设置
+- 故障排除指南
 
 ## 🗂️ 文档层次
 
@@ -51,9 +65,8 @@ docs/
 ├── translation-guide.md                # 🌐 双语翻译指南
 ├── dida-integration.md                 # 📝 滴答清单集成
 ├── deployment.md                       # 🚀 部署指南
-├── legacy-usage-guide.md               # 🗄️ 原使用指南（已整合）
-├── legacy-dida-guide.md                # 🗄️ 原集成指南（已整合）
-└── legacy-dida-quickstart.md           # 🗄️ 原快速开始（已整合）
+├── model-configuration-guide.md        # 🤖 模型配置指南
+└── ci-translation-setup.md             # 🔧 CI翻译设置
 ```
 
 ## 🎯 快速导航
@@ -83,9 +96,9 @@ docs/
 
 ## 💡 文档更新说明
 
-- **v3.0** (当前) - 新增智能监控和双语翻译指南
+- **v3.0** (当前) - 新增智能监控和双语翻译指南，清理非必要文档
 - **v2.0** - 重新组织文档结构，按功能模块分类
-- **v1.0** (legacy) - 原始版本，保留在 `legacy-*` 文件中
+- **v1.0** - 项目初始版本文档
 
 ## 🔍 功能对照表
 
@@ -95,8 +108,10 @@ docs/
 | **智能分析** | [智能监控指南](intelligent-monitoring-guide.md) | AI 采集、LLM 分析、智能报告 |
 | **多语言** | [双语翻译指南](translation-guide.md) | 中英翻译、国际化支持 |
 | **任务管理** | [滴答清单集成](dida-integration.md) | 自动创建任务、智能增强 |
-| **自动化** | [部署指南](deployment.md) | GitHub Actions、定时运行 |
+| **部署开发** | [部署指南](deployment.md) | GitHub Actions、CI/CD、本地开发 |
 | **高级搜索** | [主题搜索专题](topic-search.md) | arXiv 分类、搜索策略 |
+| **模型配置** | [模型配置指南](model-configuration-guide.md) | AI模型设置、API集成 |
+| **CI配置** | [CI翻译设置](ci-translation-setup.md) | 持续集成、自动化翻译 |
 
 ## 📝 贡献指南
 
