@@ -241,7 +241,7 @@ def display_search_results(results: dict[str, Any], limit: int = 10) -> None:
         return
 
     paper_count = len(results["papers"])
-    # 修复论文数量冲突：确保显示的总数与实际数量一致
+    # 确保显示的总数与实际数量一致
     total_found = results.get('total_results', paper_count)
     if total_found == 0 and paper_count > 0:
         total_found = paper_count
@@ -367,9 +367,8 @@ def create_topic_dida_task(
                 details_lines.append(
                     f"🎯 **使用策略:** {results.get('search_strategy_used', '未知')}"
                 )
-                # 修复论文数量冲突：使用实际论文数量而不是可能错误的total_results
+                # 使用实际论文数量
                 total_found = results.get('total_results', paper_count)
-                # 如果total_results为0但实际有论文，使用paper_count
                 if total_found == 0 and paper_count > 0:
                     total_found = paper_count
                 details_lines.append(
