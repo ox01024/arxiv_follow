@@ -2,7 +2,9 @@ name: Tests and Quality Checks
 
 on:
   push:
-    branches: [ main, develop ]
+    branches:
+      - main
+      - develop
     paths:
       - 'src/**'
       - 'tests/**'
@@ -16,7 +18,9 @@ on:
       - 'reports/**'
       - 'htmlcov/**'
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
+      - develop
     paths:
       - 'src/**'
       - 'tests/**'
@@ -131,6 +135,7 @@ jobs:
           --cov=src/arxiv_follow \
           --cov-report=xml \
           --cov-report=term-missing \
+          --cov-fail-under=80 \
           --junit-xml=pytest-results.xml \
           -v
 

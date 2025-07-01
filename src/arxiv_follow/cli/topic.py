@@ -240,9 +240,15 @@ def display_search_results(results: dict[str, Any], limit: int = 10) -> None:
         print("\n❌ 所有搜索策略都未找到结果")
         return
 
+    paper_count = len(results["papers"])
+    # 确保显示的总数与实际数量一致
+    total_found = results.get('total_results', paper_count)
+    if total_found == 0 and paper_count > 0:
+        total_found = paper_count
+
     print(f"\n🎯 使用策略: {results['search_strategy_used']}")
     print(
-        f"📊 显示前 {min(limit, len(results['papers']))} 篇论文 (总计 {results['total_results']} 篇)"
+        f"📊 显示前 {min(limit, paper_count)} 篇论文 (总计 {total_found} 篇)"
     )
     print(f"🔗 搜索链接: {results['search_url']}")
 
@@ -327,7 +333,6 @@ def create_topic_dida_task(
 
         # 构建任务摘要（Markdown格式）
         topics_str = " AND ".join([f"`{topic}`" for topic in topics])
-        " AND ".join(topics)
         if error:
             summary = f"❌ **主题论文搜索执行失败**\n\n**主题:** {topics_str}\n**错误信息:** {error}"
             details = f"⏰ **执行时间:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
@@ -351,16 +356,23 @@ def create_topic_dida_task(
                 f"\n\n⏰ **执行时间:** {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}"
             )
         else:
-            summary = f"🎉 **主题论文搜索发现 {paper_count} 篇论文！**\n\n**主题:** {topics_str}"
+            summary = f"🎉 **主题论文搜索发现 {paper_count} 篇论文！**\n\n**主题:** {topics_str}\n📊 共发现 {paper_count} 篇论文"
             # 构建详细信息（Markdown格式）
-            details_lines = [f"🔍 **搜索主题:** {topics_str}"]
+            details_lines = [
+                "\n📝 详细信息:",
+                f"🔍 **搜索主题:** {topics_str}"
+            ]
 
             if results:
                 details_lines.append(
                     f"🎯 **使用策略:** {results.get('search_strategy_used', '未知')}"
                 )
+                # 使用实际论文数量
+                total_found = results.get('total_results', paper_count)
+                if total_found == 0 and paper_count > 0:
+                    total_found = paper_count
                 details_lines.append(
-                    f"📊 **总可用论文:** {results.get('total_results', paper_count)} 篇"
+                    f"📊 **总可用论文:** {total_found} 篇"
                 )
 
                 # 显示所有论文的详细信息（Markdown格式）
@@ -385,10 +397,9 @@ def create_topic_dida_task(
                             authors_str = ", ".join(paper["authors"])
                             details_lines.append(f"👥 **作者:** {authors_str}")
 
-                        # 摘要信息（前200字符）
+                        # 摘要信息
                         if paper.get("abstract"):
                             abstract = paper["abstract"]
-
                             details_lines.append(f"📝 **摘要:** {abstract}")
 
                         # 提交日期
@@ -407,7 +418,6 @@ def create_topic_dida_task(
                         # 评论信息
                         if paper.get("comments"):
                             comments = paper["comments"]
-
                             details_lines.append(f"💬 **评论:** {comments}")
 
                         details_lines.append("---")  # 分隔线
@@ -417,8 +427,8 @@ def create_topic_dida_task(
             )
             details = "\n".join(details_lines)
 
-        # 创建任务（支持双语翻译）
-        bilingual_enabled = DIDA_API_CONFIG.get("enable_bilingual", False)
+        # 创建任务（启用双语翻译）
+        bilingual_enabled = DIDA_API_CONFIG.get("enable_bilingual", True)  # 默认启用
         result = create_arxiv_task(
             report_type="topic",
             summary=summary,
