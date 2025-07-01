@@ -522,4 +522,4 @@ ENTRYPOINT ["uv", "run", "arxiv-follow"]
 
 [官网](https://arxiv-follow.dev) • [文档](https://docs.arxiv-follow.dev) • [AI协作记录](./vibe_coding/)
 
-</div>
+</div># 触发CI测试
