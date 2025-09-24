@@ -127,6 +127,16 @@ class TranslationService:
 
                 translated_text = response.choices[0].message.content.strip()
 
+                # 新增：检查翻译结果是否为空
+                if not translated_text:
+                    logger.warning("翻译API返回了空内容")
+                    return {
+                        "success": False,
+                        "error": "翻译API返回了空内容",
+                        "translated_title": title,
+                        "translated_content": content,
+                    }
+
                 # 尝试解析JSON结果
                 try:
                     # 清理和提取JSON部分
@@ -461,6 +471,11 @@ English Version:
             )
 
             translated_text = response.choices[0].message.content.strip()
+
+            # 新增：检查翻译结果是否为空
+            if not translated_text:
+                logger.warning("翻译API返回了空内容")
+                return {"success": False, "error": "翻译API返回了空内容"}
 
             # 尝试解析JSON结果
             try:
